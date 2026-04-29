@@ -7,7 +7,7 @@ import './styles.css'
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/nash-power-play/sw.js').catch(() => {
+    navigator.serviceWorker.register('/MejoraDecisiones/sw.js').catch(() => {
       // SW registration failed, app works without it
     })
   })

@@ -5,7 +5,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/nash-power-play/',
+  base: '/MejoraDecisiones/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
