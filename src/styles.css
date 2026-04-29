@@ -1,0 +1,134 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Tablero Nash — Design System v2
+ * Aesthetic: professional political dashboard, dark by default,
+ * Bloomberg-terminal aesthetic with electric blue accent.
+ * Clean, authoritative, data-forward.
+ */
+
+@theme inline {
+  --font-display: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  --color-signal-ally: var(--signal-ally);
+  --color-signal-rival: var(--signal-rival);
+  --color-signal-neutral: var(--signal-neutral);
+  --color-signal-warn: var(--signal-warn);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+:root {
+  --radius: 0.5rem;
+
+  /* Deep dark with blue undertones */
+  --background: oklch(0.14 0.015 250);
+  --foreground: oklch(0.97 0.005 250);
+
+  --card: oklch(0.18 0.018 250);
+  --card-foreground: oklch(0.97 0.005 250);
+
+  --popover: oklch(0.18 0.018 250);
+  --popover-foreground: oklch(0.97 0.005 250);
+
+  /* Electric blue as primary accent */
+  --primary: oklch(0.72 0.18 250);
+  --primary-foreground: oklch(0.98 0.005 250);
+
+  --secondary: oklch(0.22 0.02 250);
+  --secondary-foreground: oklch(0.97 0.005 250);
+
+  --muted: oklch(0.22 0.015 250);
+  --muted-foreground: oklch(0.62 0.02 250);
+
+  --accent: oklch(0.26 0.025 250);
+  --accent-foreground: oklch(0.97 0.005 250);
+
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.98 0.005 250);
+
+  --border: oklch(0.26 0.02 250);
+  --input: oklch(0.24 0.02 250);
+  --ring: oklch(0.72 0.18 250);
+
+  /* Domain signals */
+  --signal-ally: oklch(0.72 0.16 160);
+  --signal-rival: oklch(0.65 0.20 25);
+  --signal-neutral: oklch(0.60 0.03 250);
+  --signal-warn: oklch(0.78 0.16 80);
+
+  /* Chart palette — blue-dominant */
+  --chart-1: oklch(0.72 0.18 250);
+  --chart-2: oklch(0.65 0.15 220);
+  --chart-3: oklch(0.58 0.12 280);
+  --chart-4: oklch(0.72 0.16 160);
+  --chart-5: oklch(0.68 0.14 200);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body { height: 100%; }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--color-border) 50%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--color-border) 50%, transparent) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  /* Subtle blue glow on focus */
+  *:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--background); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+}
