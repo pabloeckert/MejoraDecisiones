@@ -72,11 +72,21 @@ function layoutNodes(actors: Actor[]): Node[] {
 export function ActorGraph({
   filterKinds,
   filterRelation,
+  selectedId,
+  onSelectActor,
 }: {
   filterKinds: Set<ActorKind>
   filterRelation: 'all' | 'ally' | 'rival' | 'neutral'
+  selectedId?: string | null
+  onSelectActor?: (id: string | null) => void
 }) {
-  const [selected, setSelected] = useState<string | null>(null)
+  const [internalSelected, setInternalSelected] = useState<string | null>(null)
+  const selected = selectedId !== undefined ? selectedId : internalSelected
+
+  const handleSelect = (id: string | null) => {
+    setInternalSelected(id)
+    onSelectActor?.(id)
+  }
 
   const visibleActors = useMemo(
     () => ACTORS.filter((a) => filterKinds.has(a.kind)),
@@ -130,8 +140,8 @@ export function ActorGraph({
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
-        onNodeClick={(_, n) => setSelected((s) => (s === n.id ? null : n.id))}
-        onPaneClick={() => setSelected(null)}
+        onNodeClick={(_, n) => handleSelect(selected === n.id ? null : n.id)}
+        onPaneClick={() => handleSelect(null)}
         fitView
         proOptions={{ hideAttribution: true }}
         minZoom={0.3}

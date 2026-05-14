@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { StatCard } from '@/components/stat-card'
 import { ACTORS, RELATIONS } from '@/lib/seed-data'
+import { SCENARIOS } from '@/lib/data/scenarios'
+import { loadSnapshot, saveSnapshot, computeDiff, type WeeklyDiff } from '@/lib/weekly-diff'
 
 const MODULES = [
   { code: "01", to: "/grafo", title: "Grafo de actores", desc: "Mapa de poder, alianzas y rivalidades entre partidos, líderes, sindicatos, empresas, medios e instituciones.", status: "Live" },
@@ -19,10 +22,29 @@ const MODULES = [
   { code: "14", to: "/feed", title: "Feed", desc: "Fuentes de análisis, datos y proyecciones de medios y think tanks.", status: "Live" },
 ] as const
 
+function formatRelativeDate(date: Date): string {
+  const days = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24))
+  if (days === 0) return 'hoy'
+  if (days === 1) return 'ayer'
+  if (days < 7) return `hace ${days} días`
+  if (days < 30) return `hace ${Math.floor(days / 7)} semana${Math.floor(days / 7) > 1 ? 's' : ''}`
+  return `hace ${Math.floor(days / 30)} mes${Math.floor(days / 30) > 1 ? 'es' : ''}`
+}
+
 export default function OverviewPage() {
   const allies = RELATIONS.filter((r) => r.type === 'ally').length
   const rivals = RELATIONS.filter((r) => r.type === 'rival').length
   const neutral = RELATIONS.filter((r) => r.type === 'neutral').length
+
+  const [diff, setDiff] = useState<WeeklyDiff | null>(null)
+
+  useEffect(() => {
+    const current = { allies, rivals, neutral, actors: ACTORS.length, scenarios: SCENARIOS.length }
+    const prev = loadSnapshot()
+    const computed = computeDiff(prev, current)
+    setDiff(computed)
+    saveSnapshot({ ...current, ts: Date.now() })
+  }, [allies, rivals, neutral])
 
   return (
     <>
@@ -76,6 +98,31 @@ export default function OverviewPage() {
           </div>
         </div>
       </section>
+
+      {/* Weekly Diff */}
+      {diff && !diff.isFirstVisit && (
+        <section className="border-b border-border/30 bg-card/30">
+          <div className="mx-auto max-w-[1600px] px-6 py-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span className="text-[10px] font-display text-muted-foreground uppercase tracking-wider">
+                Desde tu última visita ({formatRelativeDate(diff.lastVisit!)})
+              </span>
+              {diff.changes.length === 0 ? (
+                <span className="text-[10px] font-display text-muted-foreground">Sin cambios en los datos</span>
+              ) : (
+                diff.changes.map((c) => (
+                  <span
+                    key={c.label}
+                    className={`text-[10px] font-display font-semibold ${c.positive ? 'text-signal-ally' : 'text-signal-rival'}`}
+                  >
+                    {c.value} {c.label}
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Stats */}
       <section className="mx-auto max-w-[1600px] px-6 py-8">
