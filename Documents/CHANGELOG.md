@@ -1,5 +1,27 @@
 # Changelog — Tablero Nash
 
+## v5.3.0 — 2026-05-14 (CTO Fases 1-3 completas)
+
+### Added
+- **Fase 1 — CI/CD hardened:**
+  - `pages.yml`: job `quality` (lint + vitest) obligatorio antes del deploy
+  - `ci.yml`: workflow CI para feature branches y PRs
+  - `nash-solver.ts`: módulo testeable con `findPureNash`, `solve2x2Mixed`, `solveNash`
+  - `nash.test.ts`: 17 tests de equilibrios Nash puros, mixtos y propiedades invariantes
+  - **Total: 52 tests pasando**
+- **Fase 2 — UX Crítica:**
+  - `weekly-diff.ts`: snapshot de visita con localStorage, cálculo de deltas
+  - `Overview.tsx`: banda "Desde tu última visita" con cambios en alianzas/rivales/actores
+  - `actor-graph.tsx`: expone `selectedId`/`onSelectActor` al padre
+  - `Grafo.tsx`: panel lateral de detalle — poder, ideología, vínculos clickeables
+- **Fase 3 — Datos en Vivo:**
+  - `api-client.ts`: cliente fetch con caché 5min, timeout 8s, 3 APIs argentinas
+  - `useLiveIndicators.ts`: hook con polling cada 5min, fallback parcial con Promise.allSettled
+  - `Indicadores.tsx`: panel "Dólar hoy" (oficial/blue/MEP/CCL), KPIs con badge LIVE, timestamp
+
+### Changed
+- `Matriz.tsx`: refactorizado para importar Nash solver desde módulo separado
+
 ## v5.0.0 — 2026-05-14 (CTO Roadmap + Hardening)
 
 ### Added
