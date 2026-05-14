@@ -1,5 +1,20 @@
 # Changelog — Tablero Nash
 
+## v5.0.0 — 2026-05-14 (CTO Roadmap + Hardening)
+
+### Added
+- **CTO-ROADMAP.md:** Plan maestro por fases con diagnóstico ejecutivo, métricas objetivo y decisiones de arquitectura
+- **CTO-SESSION-STATE.md:** Sistema de continuidad entre sesiones — di "continuemos" para retomar exactamente donde quedamos
+- **CI/CD hardened:** Job `quality` (lint + vitest) ejecuta ANTES del build; si falla, no se despliega
+- **Workflow CI:** `.github/workflows/ci.yml` dedicado a PRs y branches de feature
+- **Tests Nash solver:** `src/__tests__/nash.test.ts` — cobertura de equilibrios puros y mixtos, estrategias dominantes
+- **Weekly Diff:** `src/lib/weekly-diff.ts` — snapshot de visita con localStorage; Overview muestra "desde tu última visita"
+- **Panel de detalle en Grafo:** click en un nodo muestra panel lateral con info completa del actor
+
+### Changed
+- `MASTER.md` actualizado con roadmap CTO v5.0.0 y referencias a nuevos archivos de continuidad
+- Pipeline CI/CD ahora incluye calidad (lint + test) antes de deploy a producción
+
 ## v4.2.0 — 2026-04-30 (Módulos 02-04)
 
 ### Added
