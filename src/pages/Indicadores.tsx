@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { useLiveIndicators } from '@/hooks/useLiveIndicators'
 
 const MACRO_DATA = [
   { mes: 'Oct-25', inflacion: 2.7, pib: 3.8, reservas: 32, riesgo: 850 },
@@ -56,6 +57,37 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 
 export default function IndicadoresPage() {
   const [activeTab, setActiveTab] = useState<'macro' | 'politico' | 'sectores'>('macro')
+  const live = useLiveIndicators()
+
+  // Cotizaciones dólar en vivo
+  const dolarOficial = live.dolar?.find((d) => d.nombre.toLowerCase().includes('oficial'))
+  const dolarBlue    = live.dolar?.find((d) => d.nombre.toLowerCase().includes('blue'))
+  const dolarMep     = live.dolar?.find((d) => d.nombre.toLowerCase().includes('mep') || d.nombre.toLowerCase().includes('bolsa'))
+  const dolarCcl     = live.dolar?.find((d) => d.nombre.toLowerCase().includes('ccl') || d.nombre.toLowerCase().includes('contado'))
+
+  // KPIs macro con overlay en vivo
+  const liveEconKpis = ECON_KPIS.map((kpi) => {
+    if (kpi.label === 'Reservas BCRA' && live.reservas) {
+      const val = live.reservas.valor
+      return { ...kpi, value: `USD ${(val / 1000).toFixed(1)}B`, live: true }
+    }
+    if (kpi.label === 'Inflación mensual' && live.inflacion?.length) {
+      const last = live.inflacion[live.inflacion.length - 1]
+      return { ...kpi, value: `${last.valor.toFixed(1)}%`, live: true }
+    }
+    if (kpi.label === 'Tipo de cambio' && dolarOficial?.venta) {
+      return { ...kpi, value: `$${Math.round(dolarOficial.venta).toLocaleString('es-AR')}`, live: true }
+    }
+    return { ...kpi, live: false }
+  })
+
+  // Gráfico de inflación con datos en vivo si disponibles
+  const inflacionChartData = live.inflacion?.length
+    ? live.inflacion.map((d) => ({ mes: d.mes, inflacion: d.valor, reservas: 0, riesgo: 0 }))
+    : MACRO_DATA
+
+  const fmtTime = (d: Date) =>
+    d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 
   return (
     <div className="mx-auto max-w-[1600px] px-6 py-8">
@@ -63,7 +95,21 @@ export default function IndicadoresPage() {
         <span className="font-display text-[9px] text-primary/50 font-bold tracking-wider">04</span>
         <div className="h-px w-8 bg-primary/20" />
       </div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Indicadores</h1>
+      <div className="flex items-center gap-3 flex-wrap">
+        <h1 className="font-display text-2xl font-bold tracking-tight">Indicadores</h1>
+        {live.loading && (
+          <span className="text-[9px] font-display text-muted-foreground animate-pulse">cargando datos en vivo…</span>
+        )}
+        {!live.loading && live.lastUpdated && (
+          <span className="flex items-center gap-1.5 text-[9px] font-display text-signal-ally">
+            <span className="size-1.5 rounded-full bg-signal-ally animate-pulse" />
+            EN VIVO · {fmtTime(live.lastUpdated)}
+          </span>
+        )}
+        {live.error && (
+          <span className="text-[9px] font-display text-muted-foreground">{live.error} — usando datos estáticos</span>
+        )}
+      </div>
       <p className="text-muted-foreground text-xs mt-1">KPIs políticos y económicos con evolución temporal.</p>
 
       {/* Tabs */}
@@ -89,11 +135,41 @@ export default function IndicadoresPage() {
 
       {activeTab === 'macro' && (
         <div className="mt-8 space-y-8">
+          {/* Panel dólar en vivo */}
+          {live.dolar && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: 'Dólar Oficial', data: dolarOficial },
+                { label: 'Dólar Blue', data: dolarBlue },
+                { label: 'Dólar MEP', data: dolarMep },
+                { label: 'Dólar CCL', data: dolarCcl },
+              ].map(({ label, data }) => (
+                data ? (
+                  <div key={label} className="bg-card border border-primary/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">{label}</div>
+                      <span className="text-[8px] font-display text-signal-ally font-semibold">LIVE</span>
+                    </div>
+                    <div className="font-display text-xl">
+                      ${data.venta ? Math.round(data.venta).toLocaleString('es-AR') : '—'}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      Compra: ${data.compra ? Math.round(data.compra).toLocaleString('es-AR') : '—'}
+                    </div>
+                  </div>
+                ) : null
+              ))}
+            </div>
+          )}
+
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {ECON_KPIS.map((kpi, i) => (
+            {liveEconKpis.map((kpi, i) => (
               <div key={i} className="bg-card border border-border/60 rounded-lg p-4">
-                <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">{kpi.label}</div>
+                <div className="flex items-center justify-between mb-0.5">
+                  <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">{kpi.label}</div>
+                  {kpi.live && <span className="text-[8px] font-display text-signal-ally font-semibold">LIVE</span>}
+                </div>
                 <div className="font-display text-2xl mt-1">{kpi.value}</div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`text-xs font-display ${kpi.trend === 'up' ? 'text-signal-ally' : 'text-signal-rival'}`}>
@@ -107,10 +183,13 @@ export default function IndicadoresPage() {
 
           {/* Inflation chart */}
           <div className="bg-card border border-border/60 rounded-lg p-5">
-            <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-4">Inflación mensual (%)</div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Inflación mensual (%)</div>
+              {live.inflacion?.length ? <span className="text-[8px] font-display text-signal-ally font-semibold">LIVE · INDEC</span> : null}
+            </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={MACRO_DATA}>
+                <AreaChart data={inflacionChartData}>
                   <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
                   <XAxis dataKey="mes" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} />
                   <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} />
