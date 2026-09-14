@@ -1,5 +1,42 @@
 # Changelog — Tablero Nash
 
+## v5.3.0 — 2026-05-14 (CTO Fases 1-3 completas)
+
+### Added
+- **Fase 1 — CI/CD hardened:**
+  - `pages.yml`: job `quality` (lint + vitest) obligatorio antes del deploy
+  - `ci.yml`: workflow CI para feature branches y PRs
+  - `nash-solver.ts`: módulo testeable con `findPureNash`, `solve2x2Mixed`, `solveNash`
+  - `nash.test.ts`: 17 tests de equilibrios Nash puros, mixtos y propiedades invariantes
+  - **Total: 52 tests pasando**
+- **Fase 2 — UX Crítica:**
+  - `weekly-diff.ts`: snapshot de visita con localStorage, cálculo de deltas
+  - `Overview.tsx`: banda "Desde tu última visita" con cambios en alianzas/rivales/actores
+  - `actor-graph.tsx`: expone `selectedId`/`onSelectActor` al padre
+  - `Grafo.tsx`: panel lateral de detalle — poder, ideología, vínculos clickeables
+- **Fase 3 — Datos en Vivo:**
+  - `api-client.ts`: cliente fetch con caché 5min, timeout 8s, 3 APIs argentinas
+  - `useLiveIndicators.ts`: hook con polling cada 5min, fallback parcial con Promise.allSettled
+  - `Indicadores.tsx`: panel "Dólar hoy" (oficial/blue/MEP/CCL), KPIs con badge LIVE, timestamp
+
+### Changed
+- `Matriz.tsx`: refactorizado para importar Nash solver desde módulo separado
+
+## v5.0.0 — 2026-05-14 (CTO Roadmap + Hardening)
+
+### Added
+- **CTO-ROADMAP.md:** Plan maestro por fases con diagnóstico ejecutivo, métricas objetivo y decisiones de arquitectura
+- **CTO-SESSION-STATE.md:** Sistema de continuidad entre sesiones — di "continuemos" para retomar exactamente donde quedamos
+- **CI/CD hardened:** Job `quality` (lint + vitest) ejecuta ANTES del build; si falla, no se despliega
+- **Workflow CI:** `.github/workflows/ci.yml` dedicado a PRs y branches de feature
+- **Tests Nash solver:** `src/__tests__/nash.test.ts` — cobertura de equilibrios puros y mixtos, estrategias dominantes
+- **Weekly Diff:** `src/lib/weekly-diff.ts` — snapshot de visita con localStorage; Overview muestra "desde tu última visita"
+- **Panel de detalle en Grafo:** click en un nodo muestra panel lateral con info completa del actor
+
+### Changed
+- `MASTER.md` actualizado con roadmap CTO v5.0.0 y referencias a nuevos archivos de continuidad
+- Pipeline CI/CD ahora incluye calidad (lint + test) antes de deploy a producción
+
 ## v4.2.0 — 2026-04-30 (Módulos 02-04)
 
 ### Added

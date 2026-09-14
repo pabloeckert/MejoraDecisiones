@@ -1,8 +1,9 @@
 # 📚 Tablero Nash — Documentación Maestra Unificada
 
 > **Trigger:** Cuando digas **"documentar"**, este archivo se actualiza con los trabajos realizados.
-> **Última actualización:** 2026-04-30
-> **Versión:** 4.2.0 — SPA unificada con 15 módulos funcionales
+> **Trigger:** Cuando digas **"continuemos"**, leer primero `Documents/CTO-SESSION-STATE.md`.
+> **Última actualización:** 2026-05-14
+> **Versión:** 5.0.0 — CTO Roadmap implementado, CI/CD hardened, UX mejorada
 
 ---
 
@@ -316,7 +317,10 @@ Carpeta `/Documents/` con esta estructura:
 
 ## 10. Plan por Etapas
 
-### Estado Actual (2026-04-30)
+### Estado Actual (2026-05-14) — Roadmap CTO
+
+> Ver `Documents/CTO-ROADMAP.md` para el plan completo por fases.
+> Ver `Documents/CTO-SESSION-STATE.md` para retomar sesión: dile "continuemos".
 
 | Etapa | Estado | Detalle |
 |-------|--------|---------|
@@ -327,7 +331,13 @@ Carpeta `/Documents/` con esta estructura:
 | 4. Matriz de pagos | ✅ | Editor N×M, 6 plantillas, solver Nash puro + mixto |
 | 5. Escenarios | ✅ | Simulador what-if con 6 parámetros |
 | 6. Indicadores | ✅ | KPIs macro + políticos + charts + sectores |
-| 7. Hardening + QA | 🔧 Pendiente | Tests, performance, SEO |
+| **CTO-F0. Plan Maestro** | ✅ | Roadmap CTO, sistema de continuidad entre sesiones |
+| **CTO-F1. Hardening CI/CD** | ✅ | Lint + tests en pipeline, tests Nash solver |
+| **CTO-F2. UX Crítica** | ✅ | Weekly diff, panel detalle Grafo |
+| **CTO-F3. Datos en Vivo** | ⏳ | APIs BCRA, INDEC, DolarAPI |
+| **CTO-F4. Export** | ⏳ | PDF Matriz, snapshots compartibles |
+| **CTO-F5. PWA + Light mode** | ⏳ | PWA funcional, light mode, command bar |
+| **CTO-F6. MejoraApp** | 🔮 | Módulo embebible (futuro) |
 
 ---
 
