@@ -36,13 +36,15 @@ export default function OverviewPage() {
   const rivals = RELATIONS.filter((r) => r.type === 'rival').length
   const neutral = RELATIONS.filter((r) => r.type === 'neutral').length
 
-  const [diff, setDiff] = useState<WeeklyDiff | null>(null)
+  // Lazy init: lee el snapshot ANTERIOR y calcula el diff antes de que el efecto
+  // de abajo lo sobrescriba. Evita el antipatrón setState-en-efecto sin cambiar el orden real.
+  const [diff] = useState<WeeklyDiff | null>(() => {
+    const current = { allies, rivals, neutral, actors: ACTORS.length, scenarios: SCENARIOS.length }
+    return computeDiff(loadSnapshot(), current)
+  })
 
   useEffect(() => {
     const current = { allies, rivals, neutral, actors: ACTORS.length, scenarios: SCENARIOS.length }
-    const prev = loadSnapshot()
-    const computed = computeDiff(prev, current)
-    setDiff(computed)
     saveSnapshot({ ...current, ts: Date.now() })
   }, [allies, rivals, neutral])
 
