@@ -3,9 +3,15 @@ import { CONGRESS } from '@/lib/data/congress'
 export default function CongresoPage() {
   return (
     <div className="mx-auto max-w-[1600px] px-6 py-8">
-      <div className="font-display text-[10px] uppercase tracking-[0.3em] text-primary">Módulo 09</div>
+      <div className="flex items-center gap-2 mb-1">
+        <div className="font-display text-[10px] uppercase tracking-[0.3em] text-primary">Módulo 09</div>
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-400">
+          <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
+          Próximamente
+        </span>
+      </div>
       <h1 className="font-display text-3xl mt-1">Congreso</h1>
-      <p className="text-muted-foreground text-sm mt-1">Composición de bloques, legislación clave y análisis de poder legislativo.</p>
+      <p className="text-muted-foreground text-sm mt-1">Composición de bloques, legislación clave y análisis de poder legislativo. <span className="text-amber-400/80 font-display text-xs">· Cascarón estático preliminar</span></p>
 
       {/* Diputados */}
       <div className="mt-8 space-y-3">

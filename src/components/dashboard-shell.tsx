@@ -2,7 +2,14 @@ import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 
-const NAV = [
+interface NavItem {
+  to: string
+  label: string
+  code: string
+  badge?: string
+}
+
+const NAV: readonly NavItem[] = [
   { to: "/", label: "Overview", code: "00" },
   { to: "/grafo", label: "Grafo", code: "01" },
   { to: "/matriz", label: "Matriz", code: "02" },
@@ -11,14 +18,14 @@ const NAV = [
   { to: "/ia", label: "IA", code: "05" },
   { to: "/pymes", label: "PyMEs", code: "06" },
   { to: "/kanban", label: "Kanban", code: "07" },
-  { to: "/predictor", label: "Predictor", code: "08" },
-  { to: "/congreso", label: "Congreso", code: "09" },
+  { to: "/predictor", label: "Predictor", code: "08", badge: "Próx" },
+  { to: "/congreso", label: "Congreso", code: "09", badge: "Próx" },
   { to: "/provincias", label: "Provincias", code: "10" },
   { to: "/sombra", label: "Sombra", code: "11" },
   { to: "/internacional", label: "Intl", code: "12" },
-  { to: "/alianzas", label: "Alianzas", code: "13" },
-  { to: "/feed", label: "Feed", code: "14" },
-] as const
+  { to: "/alianzas", label: "Alianzas", code: "13", badge: "Próx" },
+  { to: "/feed", label: "Feed", code: "14", badge: "Próx" },
+]
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   const location = useLocation()
@@ -53,7 +60,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   key={item.to}
                   to={item.to}
                   className={cn(
-                    "relative flex items-center gap-1 px-2.5 h-8 rounded-md text-[11px] transition-all font-display whitespace-nowrap",
+                    "relative flex items-center gap-1.5 px-2.5 h-8 rounded-md text-[11px] transition-all font-display whitespace-nowrap",
                     active
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
@@ -64,6 +71,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                     active ? "text-primary/60" : "text-muted-foreground/40"
                   )}>{item.code}</span>
                   <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="text-[8px] font-display uppercase tracking-wider px-1 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                      {item.badge}
+                    </span>
+                  )}
                   {active && (
                     <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-primary rounded-full" />
                   )}
