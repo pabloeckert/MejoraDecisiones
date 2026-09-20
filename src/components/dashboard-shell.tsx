@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 
@@ -30,9 +31,37 @@ const NAV: readonly NavItem[] = [
 export function DashboardShell({ children }: { children: ReactNode }) {
   const location = useLocation()
   const path = location.pathname
+  const [theme, setTheme] = useState<'tactico' | 'directorio'>(() => {
+    return (localStorage.getItem('nash_theme') as 'tactico' | 'directorio') || 'tactico'
+  })
+
+  useEffect(() => {
+    if (theme === 'directorio') {
+      document.documentElement.setAttribute('data-theme', 'directorio')
+    } else {
+      document.documentElement.removeAttribute('data-theme')
+    }
+    localStorage.setItem('nash_theme', theme)
+  }, [theme])
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
+      {/* Conversion Banner: Hook Alta Dirección -> Diagnóstico 4D */}
+      <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border-b border-primary/30 py-2 px-4 text-center text-xs font-display flex items-center justify-center gap-2 flex-wrap">
+        <span className="text-muted-foreground font-medium">
+          ¿Querés aplicar este análisis a tu empresa?
+        </span>
+        <a
+          href="https://diagnostico.mejoraok.com?utm_source=tablero_nash&utm_medium=cta_header"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 font-bold text-primary hover:text-black hover:bg-primary px-3 py-0.5 rounded-full transition-all border border-primary/40 text-[11px] shadow-sm"
+        >
+          <span>Hacé el Diagnóstico 4D</span>
+          <span className="text-[12px]">→</span>
+        </a>
+      </div>
+
       {/* Top bar */}
       <header className="border-b border-border/60 bg-card/60 backdrop-blur-xl sticky top-0 z-30">
         <div className="mx-auto max-w-[1600px] px-4 lg:px-6 h-14 flex items-center gap-4">
@@ -84,10 +113,19 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             })}
           </nav>
 
-          {/* Status */}
-          <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-border/40 shrink-0">
-            <span className="size-1.5 rounded-full bg-signal-ally animate-pulse" />
-            <span className="text-[9px] font-display text-muted-foreground uppercase tracking-widest">Live</span>
+          {/* Status & Theme Selector */}
+          <div className="flex items-center gap-2 pl-3 border-l border-border/40 shrink-0">
+            <div className="hidden lg:flex items-center gap-1.5">
+              <span className="size-1.5 rounded-full bg-signal-ally animate-pulse" />
+              <span className="text-[9px] font-display text-muted-foreground uppercase tracking-widest">Live</span>
+            </div>
+            <button
+              onClick={() => setTheme((t) => (t === 'tactico' ? 'directorio' : 'tactico'))}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-display font-medium border border-border/60 hover:border-primary/40 bg-card/60 hover:bg-accent/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-sm"
+              title="Alternar entre Modo Táctico y Modo Directorio (Mejora Continua)"
+            >
+              <span>{theme === 'directorio' ? '🏢 Modo Directorio' : '⚡ Modo Táctico'}</span>
+            </button>
           </div>
         </div>
       </header>
@@ -96,8 +134,19 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
       {/* Footer */}
       <footer className="border-t border-border/40 bg-card/30">
-        <div className="mx-auto max-w-[1600px] px-6 h-10 flex items-center justify-between text-[10px] font-display text-muted-foreground">
-          <span>Datos ilustrativos · Citar fuentes antes de uso público</span>
+        <div className="mx-auto max-w-[1600px] px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] font-display text-muted-foreground">
+          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+            <span>Datos ilustrativos · Citar fuentes antes de uso público</span>
+            <span className="hidden sm:inline">·</span>
+            <a
+              href="https://diagnostico.mejoraok.com?utm_source=tablero_nash&utm_medium=cta_footer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-semibold"
+            >
+              ¿Querés aplicar este análisis a tu empresa? Hacé el Diagnóstico 4D →
+            </a>
+          </div>
           <div className="flex items-center gap-3">
             <span className="opacity-50">v4.3</span>
             <span className="text-primary/50">▲</span>
