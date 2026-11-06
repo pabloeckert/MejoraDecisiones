@@ -59,7 +59,7 @@
 - Documentación consolidada en Documents/MASTER.md
 
 ### Removed
-- Dependencia a @lovable.dev/vite-tanstack-config
+- Dependencia a config externa heredada
 - Dependencia a @cloudflare/vite-plugin
 - SSR (Server-Side Rendering) — no necesario para contenido estático
 

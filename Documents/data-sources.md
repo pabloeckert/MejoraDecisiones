@@ -39,7 +39,7 @@
 
 ## IA
 
-- Lovable AI Gateway: Gemini y GPT vía integración nativa
+- AI Gateway institucional: Gemini vía integración nativa
 - Sin API key del usuario requerida
 
 ## Protocolo de actualización

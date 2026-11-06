@@ -43,7 +43,7 @@ permissions:
 1. **Cloudflare Workers**: Más complejo, no necesario para contenido estático
 2. **Vercel**: Bien pero introduce dependencia externa
 3. **Netlify**: Similar a Vercel
-4. **Lovable Cloud**: Mencionado en plan original pero no disponible
+4. **Cloud hosting externo**: Mencionado en plan original pero descartado
 
 ## Futuro
 
