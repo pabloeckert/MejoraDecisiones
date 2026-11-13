@@ -1,7 +1,7 @@
 # CTO Session State — Para "continuemos"
 
 > **Instrucción:** Cuando digas "continuemos", Claude lee este archivo primero para retomar exactamente donde quedamos.
-> **Última actualización:** 2026-11-13 (Decision OS Completo — Autónomo + Federation-Ready)
+> **Última actualización:** 2026-11-13 (Bloque 1 & Bloque 2 completos — Decision OS v5.4)
 > **Rama de trabajo:** `main`
 
 ---
@@ -22,9 +22,10 @@ Claude leerá este archivo, entenderá el estado exacto, y continuará desde la 
 | FASE 1 — Hardening CI/CD + Tests | ✅ COMPLETA | 2026-05-14 sesión 2 |
 | FASE 2 — UX Crítica (Weekly Diff + Grafo) | ✅ COMPLETA | 2026-05-14 sesión 2 |
 | FASE 3 — Datos en Vivo (APIs públicas) | ✅ COMPLETA | 2026-05-14 sesión 2 |
-| FASE 4 — Export + URL State + Command Bar | ✅ COMPLETA | 2026-11-13 (Decision OS v5.2) |
-| FASE 5 — Decision OS Multi-Escala (L4–L1) + Cero Cascarones | ✅ COMPLETA | 2026-11-13 (Decision OS v5.2) |
-| FASE 6 — Integración MejoraApp (Puente Federado Listo) | 🔌 LISTO PARA CONECTAR | 2026-11-13 (`src/lib/federation.ts`) |
+| FASE 4 — Export + URL State + Command Bar + Importador | ✅ COMPLETA | 2026-11-13 (`Decisiones.tsx`, `Matriz.tsx`, `Escenarios.tsx`) |
+| FASE 5 — Decision OS Multi-Escala (L4–L1) + Wizard 60s + PDF | ✅ COMPLETA | 2026-11-13 (v5.4 Decision OS) |
+| FASE 6 — Grafo Multi-País / Empresarial + Vector 4D | ✅ COMPLETA | 2026-11-13 (`Grafo.tsx`, `seed-data.ts`) |
+| FASE 7 — Integración Bidireccional MejoraApp / Diagnóstico 4D | 🔌 LISTO PARA CONECTAR | Protocolo `mejora.decision-os.v1` en `src/lib/federation.ts` |
 
 ---
 
@@ -131,20 +132,19 @@ Claude leerá este archivo, entenderá el estado exacto, y continuará desde la 
 ```
 
 **URL de producción:** https://pabloeckert.github.io/MejoraDecisiones/
-**Rama de trabajo:** `claude/cto-analysis-framework-E583b`
-**Rama de deploy:** `main` (auto-deploy via GitHub Actions)
+**Rama de trabajo y deploy:** `main` (auto-deploy via GitHub Actions)
 
 ---
 
 ## Métricas de calidad actuales
 
-| Métrica | Antes sesión 2 | Después sesión 2 |
-|---------|---------------|-----------------|
-| Tests | 35 (solo datos) | 52 (datos + Nash solver) |
-| CI/CD calidad | ❌ Sin lint/test | ✅ lint+test+build |
-| Datos en vivo | 0% | 3 APIs integradas (dólar, reservas, inflación) |
-| UX — weekly diff | ❌ | ✅ localStorage |
-| UX — Grafo detalle | ❌ Click sin info | ✅ Panel lateral completo |
+| Métrica | Antes (Sesión 2) | Actual (v5.4 Decision OS) |
+|---------|------------------|---------------------------|
+| Tests | 52 (datos + Nash solver) | 65 (datos + Nash + Decision Engine + 4D Graph + Federación) |
+| CI/CD calidad | ✅ lint+test+build | ✅ lint+test+build (0 errores) |
+| Datos en vivo | 3 APIs (Dólar/BCRA/INDEC) | 5 APIs (Dólar/BCRA/INDEC + Frankfurter BCE + Banco Mundial) |
+| Motor Decisiones | Básico (Nash 2×2) | L4–L1 + Wizard 60s + Monte Carlo + Informe PDF + Importador JSON |
+| Grafo de Poder | Solo Argentina (30 nodos) | Multi-Red (Argentina / Global / Empresa editable) + Vector 4D |
 
 ---
 

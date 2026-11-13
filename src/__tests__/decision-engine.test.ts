@@ -14,6 +14,16 @@ import {
   DECISION_TEMPLATES,
   generateMultiVisionAnalysis,
 } from '../lib/context-packs'
+import {
+  exportFederationBundle,
+  importFederationBundle,
+  FEDERATION_SCHEMA_VERSION,
+} from '../lib/federation'
+import {
+  ACTORS,
+  GRAPH_NETWORKS,
+  getActorPowerVector,
+} from '../lib/seed-data'
 
 describe('Decision Engine — Decisión Bajo Incertidumbre (Wald, Savage, Ariely, EVPI)', () => {
   it('calcula correctamente Valor Esperado, Maximin (Wald), Minimax Regret (Savage) y EVPI', () => {
@@ -177,5 +187,42 @@ describe('Context Packs Internacionales y Consejo de 4 Lentes', () => {
       region: 'GLOBAL',
     })
     expect(lenses).toHaveLength(4)
+  })
+})
+
+describe('Federation Bridge & Multi-Network 4D Power Graph', () => {
+  it('exporta e importa paquetes federados con validación de schemaVersion', () => {
+    const bundle = exportFederationBundle()
+    expect(bundle.schemaVersion).toBe(FEDERATION_SCHEMA_VERSION)
+    expect(importFederationBundle(bundle)).toBe(true)
+
+    const invalidPayload = { schemaVersion: 'legacy.v0' } as unknown as Parameters<
+      typeof importFederationBundle
+    >[0]
+    expect(importFederationBundle(invalidPayload)).toBe(false)
+  })
+
+  it('calcula el Vector de 4 Poderes dentro del rango [10, 99]', () => {
+    ACTORS.slice(0, 5).forEach((actor) => {
+      const vec = getActorPowerVector(actor)
+      ;[vec.institutional, vec.mobilization, vec.financial, vec.narrative].forEach((val) => {
+        expect(val).toBeGreaterThanOrEqual(10)
+        expect(val).toBeLessThanOrEqual(99)
+      })
+    })
+  })
+
+  it('valida integridad referencial de redes AR, GLOBAL y EMPRESA en GRAPH_NETWORKS', () => {
+    expect(Object.keys(GRAPH_NETWORKS)).toEqual(['AR', 'GLOBAL', 'EMPRESA'])
+    ;(['AR', 'GLOBAL', 'EMPRESA'] as const).forEach((netId) => {
+      const net = GRAPH_NETWORKS[netId]
+      expect(net.actors.length).toBeGreaterThanOrEqual(10)
+      const ids = new Set(net.actors.map((a) => a.id))
+      expect(ids.size).toBe(net.actors.length)
+      net.relations.forEach((rel) => {
+        expect(ids.has(rel.source)).toBe(true)
+        expect(ids.has(rel.target)).toBe(true)
+      })
+    })
   })
 })

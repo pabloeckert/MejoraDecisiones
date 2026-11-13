@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, type ChangeEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   BarChart,
@@ -36,6 +36,7 @@ import {
   deleteDecisionEntry,
   computeCalibrationMetrics,
   exportFederationBundle,
+  importFederationBundle,
   buildDiagnostico4DFederatedUrl,
   type DecisionJournalEntry,
 } from '@/lib/federation'
@@ -147,6 +148,44 @@ export default function DecisionesPage() {
   const [confidenceInput, setConfidenceInput] = useState<number>(75)
   const [journalNote, setJournalNote] = useState<string>('')
   const [copiedShareUrl, setCopiedShareUrl] = useState<boolean>(false)
+
+  // Bloque 1: Importador Federado, Wizard Guiado 60s y Reporte Ejecutivo PDF
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [importStatus, setImportStatus] = useState<{
+    type: 'ok' | 'err'
+    text: string
+  } | null>(null)
+  const [showExecutiveReport, setShowExecutiveReport] = useState<boolean>(false)
+  const [reportTimestamp, setReportTimestamp] = useState<string>('')
+  const [showWizard, setShowWizard] = useState<boolean>(false)
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1)
+  const [wizardTitle, setWizardTitle] = useState<string>('')
+  const [wizardLevel, setWizardLevel] = useState<DecisionLevel>(activeLevel)
+  const [wizardReversibility, setWizardReversibility] = useState<
+    'reversible' | 'partially_reversible' | 'irreversible'
+  >('partially_reversible')
+  const [wizardOptA, setWizardOptA] = useState<string>(
+    'A: Mantener estatus actual / Cobertura conservadora'
+  )
+  const [wizardOptB, setWizardOptB] = useState<string>(
+    'B: Piloto gradual con validación por etapas'
+  )
+  const [wizardOptC, setWizardOptC] = useState<string>(
+    'C: Expansión / Cambio estructural completo'
+  )
+  const [wizardRiskProfile, setWizardRiskProfile] = useState<
+    'optimista' | 'equilibrado' | 'adverso_volatil'
+  >('equilibrado')
+  const [wizardImpactScale, setWizardImpactScale] = useState<
+    'bajo' | 'medio' | 'alto' | 'critico'
+  >('alto')
+  const [wizardCounterpart, setWizardCounterpart] = useState<string>(
+    'Cliente / Competidor / Socio Clave'
+  )
+  const [wizardPosture, setWizardPosture] = useState<
+    'cooperativa' | 'competitiva' | 'defensiva'
+  >('competitiva')
+  const [wizardAppliedNotice, setWizardAppliedNotice] = useState<boolean>(false)
 
   // Sincronizar cambio de nivel con su plantilla
   const handleSelectLevel = (lvl: DecisionLevel) => {
@@ -286,89 +325,619 @@ export default function DecisionesPage() {
     setTimeout(() => setCopiedShareUrl(false), 2500)
   }
 
+  const resultsSectionRef = useRef<HTMLDivElement | null>(null)
+
+  const handleImportFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text)
+      const ok = importFederationBundle(parsed)
+      if (ok) {
+        const nextReg = loadActiveRegion()
+        setRegion(nextReg)
+        setJournal(loadDecisionJournal())
+        setSearchParams({ level: activeLevel, region: nextReg })
+        setImportStatus({
+          type: 'ok',
+          text: '✓ Paquete federado importado con éxito',
+        })
+      } else {
+        setImportStatus({
+          type: 'err',
+          text: '⚠ Archivo JSON inválido o esquema incompatible',
+        })
+      }
+    } catch {
+      setImportStatus({
+        type: 'err',
+        text: '⚠ Archivo JSON inválido o esquema incompatible',
+      })
+    }
+    setTimeout(() => setImportStatus(null), 4500)
+  }
+
+  const handleApplyWizard = () => {
+    const cleanTitle =
+      wizardTitle.trim() ||
+      `Decisión ${wizardLevel.replace('_', ' ')} (${regionPack.name})`
+    const optA = wizardOptA.trim() || 'Opción A: Conservadora / Cobertura'
+    const optB = wizardOptB.trim() || 'Opción B: Piloto Gradual / Híbrida'
+    const optC = wizardOptC.trim() || 'Opción C: Expansión / Cambio Total'
+    const counterpart = wizardCounterpart.trim() || 'Contraparte Clave'
+
+    const impactMultiplier =
+      wizardImpactScale === 'bajo'
+        ? 15
+        : wizardImpactScale === 'medio'
+        ? 35
+        : wizardImpactScale === 'alto'
+        ? 65
+        : 100
+
+    const nextProbs =
+      wizardRiskProfile === 'optimista'
+        ? [0.5, 0.35, 0.15]
+        : wizardRiskProfile === 'equilibrado'
+        ? [0.3, 0.45, 0.25]
+        : [0.2, 0.4, 0.4]
+
+    const postureShift =
+      wizardPosture === 'cooperativa'
+        ? 10
+        : wizardPosture === 'defensiva'
+        ? -8
+        : -4
+
+    const nextPayoffs: number[][] = [
+      [
+        Math.round(0.35 * impactMultiplier),
+        Math.round(0.2 * impactMultiplier),
+        Math.round(-0.05 * impactMultiplier),
+      ],
+      [
+        Math.round(0.68 * impactMultiplier + postureShift * 0.4),
+        Math.round(0.34 * impactMultiplier),
+        Math.round(-0.22 * impactMultiplier),
+      ],
+      [
+        Math.round(1.15 * impactMultiplier + postureShift * 0.6),
+        Math.round(0.18 * impactMultiplier),
+        Math.round(-0.72 * impactMultiplier),
+      ],
+    ]
+
+    const mcBase = Math.round(0.28 * impactMultiplier)
+    const nextMcFactors: MonteCarloFactor[] = [
+      {
+        id: 'demand',
+        name: 'Adopción / Tracción de la Decisión (%)',
+        min: -20,
+        mode: 12,
+        max: 45,
+        weight: Number((impactMultiplier / 50).toFixed(2)),
+      },
+      {
+        id: 'execution_cost',
+        name: 'Fricción / Desvío de Costos (%)',
+        min: -10,
+        mode: 10,
+        max: 35,
+        weight: Number((-impactMultiplier / 65).toFixed(2)),
+      },
+      {
+        id: 'macro_shock',
+        name: `Volatilidad Externa (${regionPack.code}) (%)`,
+        min: -30,
+        mode: 0,
+        max: 25,
+        weight: Number((impactMultiplier / 75).toFixed(2)),
+      },
+    ]
+
+    const postureDelta =
+      wizardPosture === 'cooperativa'
+        ? 15
+        : wizardPosture === 'competitiva'
+        ? -12
+        : -6
+
+    const nextBranches: SequentialGameBranch[] = [
+      {
+        firstMoveLabel: optA,
+        responses: [
+          {
+            responseLabel: `${counterpart}: Acepta acuerdos graduales`,
+            firstMoverPayoff: Math.round(0.28 * impactMultiplier),
+            secondMoverPayoff: 20 + postureDelta,
+          },
+          {
+            responseLabel: `${counterpart}: Presiona por mejores condiciones`,
+            firstMoverPayoff: Math.round(0.12 * impactMultiplier),
+            secondMoverPayoff: 16,
+          },
+        ],
+      },
+      {
+        firstMoveLabel: optB,
+        responses: [
+          {
+            responseLabel: `${counterpart}: Coopera en piloto acotado`,
+            firstMoverPayoff: Math.round(0.55 * impactMultiplier + postureDelta * 0.5),
+            secondMoverPayoff: wizardPosture === 'cooperativa' ? 35 : 28,
+          },
+          {
+            responseLabel: `${counterpart}: Bloquea expansión inicial`,
+            firstMoverPayoff: Math.round(-0.08 * impactMultiplier),
+            secondMoverPayoff: wizardPosture === 'defensiva' ? 24 : 18,
+          },
+        ],
+      },
+      {
+        firstMoveLabel: optC,
+        responses: [
+          {
+            responseLabel: `${counterpart}: Cede ante hechos consumados`,
+            firstMoverPayoff: Math.round(0.95 * impactMultiplier),
+            secondMoverPayoff: 8,
+          },
+          {
+            responseLabel: `${counterpart}: Guerra de desgaste / Contraofensiva`,
+            firstMoverPayoff: Math.round(-0.45 * impactMultiplier),
+            secondMoverPayoff: wizardPosture === 'competitiva' ? 32 : 26,
+          },
+        ],
+      },
+    ]
+
+    const nextTopsisAlts: TopsisAlternative[] = [
+      {
+        id: 'wiz-a',
+        name: optA,
+        scores: {
+          c1: 5,
+          c2: 9,
+          c3: 2,
+          c4: 8,
+        },
+        reversibility: 'reversible',
+      },
+      {
+        id: 'wiz-b',
+        name: optB,
+        scores: {
+          c1: 8,
+          c2: 7,
+          c3: 5,
+          c4: 8,
+        },
+        reversibility: 'partially_reversible',
+      },
+      {
+        id: 'wiz-c',
+        name: optC,
+        scores: {
+          c1: 10,
+          c2: 4,
+          c3: 9,
+          c4: 5,
+        },
+        reversibility: wizardReversibility,
+      },
+    ]
+
+    setActiveLevel(wizardLevel)
+    setDecisionTitle(cleanTitle)
+    setReversibility(wizardReversibility)
+    setAlternatives([optA, optB, optC])
+    setScenarios([
+      'Escenario Favorable',
+      'Escenario Base / Inercial',
+      'Escenario Adverso / Estrés',
+    ])
+    setProbabilities(nextProbs)
+    setPayoffs(nextPayoffs)
+    setMcBaseOutcome(mcBase)
+    setMcFactors(nextMcFactors)
+    setKellyPayoffRatio(wizardRiskProfile === 'optimista' ? 2.1 : wizardRiskProfile === 'equilibrado' ? 1.7 : 1.35)
+    setSeqBranches(nextBranches)
+    setTopsisCriteria([
+      { id: 'c1', name: 'Impacto / Retorno Estratégico', weight: 9, direction: 'benefit' },
+      { id: 'c2', name: 'Velocidad y Reversibilidad', weight: 8, direction: 'benefit' },
+      { id: 'c3', name: 'Capital / Fricción en Riesgo', weight: 7, direction: 'cost' },
+      { id: 'c4', name: 'Alineación con Datos y Lentes', weight: 7, direction: 'benefit' },
+    ])
+    setTopsisAlts(nextTopsisAlts)
+    setSearchParams({ level: wizardLevel, region })
+    setShowWizard(false)
+    setWizardAppliedNotice(true)
+    setTimeout(() => setWizardAppliedNotice(false), 5000)
+    setTimeout(() => {
+      resultsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+  }
+
   return (
-    <div className="mx-auto max-w-[1600px] px-6 py-8 space-y-8">
-      {/* Header + Selector Internacional */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 border-b border-border/60 pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="font-display text-[10px] uppercase tracking-[0.25em] px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/30 font-semibold">
-              Decision OS · Multi-Escala
-            </span>
-            <span className="text-[10px] font-display text-muted-foreground">
-              Autónomo · Federation-Ready (v1)
-            </span>
+    <>
+      <div
+        className={`mx-auto max-w-[1600px] px-6 py-8 space-y-8 ${
+          showExecutiveReport ? 'print-hidden' : ''
+        }`}
+      >
+        {/* Header + Selector Internacional */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 border-b border-border/60 pb-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-display text-[10px] uppercase tracking-[0.25em] px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/30 font-semibold">
+                Decision OS · Multi-Escala
+              </span>
+              <span className="text-[10px] font-display text-muted-foreground">
+                Autónomo · Federation-Ready (v1)
+              </span>
+            </div>
+            <h1 className="font-display text-2xl md:text-4xl font-bold tracking-tight">
+              Motor Universal de Decisiones y Escenarios
+            </h1>
+            <p className="text-muted-foreground text-xs md:text-sm mt-1.5 max-w-2xl">
+              Proyectá escenarios, medí el riesgo y tomá decisiones fundamentadas en datos en vivo,
+              Teoría de Juegos, Simulación de Monte Carlo y Economía Conductual — desde geopolítica
+              global y directorio empresarial hasta tu visión personal y dilemas cotidianos.
+            </p>
           </div>
-          <h1 className="font-display text-2xl md:text-4xl font-bold tracking-tight">
-            Motor Universal de Decisiones y Escenarios
-          </h1>
-          <p className="text-muted-foreground text-xs md:text-sm mt-1.5 max-w-2xl">
-            Proyectá escenarios, medí el riesgo y tomá decisiones fundamentadas en datos en vivo,
-            Teoría de Juegos, Simulación de Monte Carlo y Economía Conductual — desde geopolítica
-            global y directorio empresarial hasta tu visión personal y dilemas cotidianos.
-          </p>
+
+          {/* Selector de Contexto Internacional */}
+          <div className="flex flex-col items-start lg:items-end gap-2">
+            <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+              Contexto Geográfico / Mercado en Vivo
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.keys(REGIONAL_CONTEXT_PACKS) as RegionCode[]).map((code) => {
+                const pack = REGIONAL_CONTEXT_PACKS[code]
+                const active = region === code
+                return (
+                  <button
+                    key={code}
+                    onClick={() => handleSelectRegion(code)}
+                    className={`px-2.5 h-8 rounded-md border text-xs font-display flex items-center gap-1.5 transition-all cursor-pointer ${
+                      active
+                        ? 'border-primary bg-primary/15 text-primary font-semibold shadow-sm'
+                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <span>{pack.flag}</span>
+                    <span>{pack.code}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
 
-        {/* Selector de Contexto Internacional */}
-        <div className="flex flex-col items-start lg:items-end gap-2">
-          <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
-            Contexto Geográfico / Mercado en Vivo
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(REGIONAL_CONTEXT_PACKS) as RegionCode[]).map((code) => {
-              const pack = REGIONAL_CONTEXT_PACKS[code]
-              const active = region === code
-              return (
-                <button
-                  key={code}
-                  onClick={() => handleSelectRegion(code)}
-                  className={`px-2.5 h-8 rounded-md border text-xs font-display flex items-center gap-1.5 transition-all cursor-pointer ${
-                    active
-                      ? 'border-primary bg-primary/15 text-primary font-semibold shadow-sm'
-                      : 'border-border/60 bg-card text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <span>{pack.flag}</span>
-                  <span>{pack.code}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Pulso Internacional en Tiempo Real (ContextPack + Live APIs) */}
-      <div className="bg-card border border-border/60 rounded-lg p-5 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">{regionPack.flag}</span>
-            <div>
-              <div className="font-display text-sm font-bold flex items-center gap-2">
-                <span>Radar de Contexto: {regionPack.name}</span>
-                <span className="text-[10px] font-display px-2 py-0.5 rounded bg-signal-ally/15 text-signal-ally border border-signal-ally/30">
-                  {live.loading ? 'Sincronizando APIs...' : 'Fuentes Activas'}
-                </span>
+        {/* Pulso Internacional en Tiempo Real (ContextPack + Live APIs) */}
+        <div className="bg-card border border-border/60 rounded-lg p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{regionPack.flag}</span>
+              <div>
+                <div className="font-display text-sm font-bold flex items-center gap-2">
+                  <span>Radar de Contexto: {regionPack.name}</span>
+                  <span className="text-[10px] font-display px-2 py-0.5 rounded bg-signal-ally/15 text-signal-ally border border-signal-ally/30">
+                    {live.loading ? 'Sincronizando APIs...' : 'Fuentes Activas'}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{regionPack.summary}</p>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">{regionPack.summary}</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => {
+                  setWizardLevel(activeLevel)
+                  setShowWizard((prev) => !prev)
+                }}
+                className={`px-3 h-7 rounded border text-[10px] font-display font-semibold transition-colors cursor-pointer ${
+                  showWizard
+                    ? 'border-amber-400 bg-amber-400/20 text-amber-300'
+                    : 'border-amber-400/50 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20'
+                }`}
+              >
+                {showWizard ? '✕ Cerrar Wizard 60s' : '⚡ Wizard Guiado (60s)'}
+              </button>
+              <button
+                onClick={() => {
+                  setReportTimestamp(new Date().toLocaleString('es-AR'))
+                  setShowExecutiveReport(true)
+                }}
+                className="px-3 h-7 rounded border border-signal-ally/50 bg-signal-ally/10 text-[10px] font-display font-semibold text-signal-ally hover:bg-signal-ally/20 transition-colors cursor-pointer"
+              >
+                📄 Informe Ejecutivo / PDF
+              </button>
+              <button
+                onClick={handleCopyShareLink}
+                className="px-3 h-7 rounded border border-border text-[10px] font-display text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+              >
+                {copiedShareUrl ? '✓ Enlace copiado' : '🔗 Compartir Escenario'}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleImportFileChange}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 h-7 rounded border border-border bg-background/60 text-[10px] font-display text-foreground hover:bg-accent/60 transition-colors cursor-pointer"
+                title="Importar paquete JSON exportado previamente (mejora.decision-os.v1)"
+              >
+                📂 Importar Paquete JSON
+              </button>
+              <button
+                onClick={handleExportFederationJson}
+                className="px-3 h-7 rounded border border-primary/40 bg-primary/10 text-[10px] font-display text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+                title="Exportar paquete JSON compatible con MejoraApp y Diagnóstico 4D"
+              >
+                ⬇ Exportar Paquete Federado
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCopyShareLink}
-              className="px-3 h-7 rounded border border-border text-[10px] font-display text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+          {importStatus && (
+            <div
+              className={`px-3 py-2 rounded border text-xs font-display ${
+                importStatus.type === 'ok'
+                  ? 'border-signal-ally/40 bg-signal-ally/10 text-signal-ally'
+                  : 'border-destructive/40 bg-destructive/10 text-destructive'
+              }`}
             >
-              {copiedShareUrl ? '✓ Enlace copiado' : '🔗 Compartir Escenario'}
-            </button>
-            <button
-              onClick={handleExportFederationJson}
-              className="px-3 h-7 rounded border border-primary/40 bg-primary/10 text-[10px] font-display text-primary hover:bg-primary/20 transition-colors cursor-pointer"
-              title="Exportar paquete JSON compatible con MejoraApp y Diagnóstico 4D"
-            >
-              ⬇ Exportar Paquete Federado
-            </button>
-          </div>
-        </div>
+              {importStatus.text}
+            </div>
+          )}
+
+          {wizardAppliedNotice && (
+            <div className="px-3 py-2 rounded border border-primary/40 bg-primary/10 text-primary text-xs font-display">
+              ✨ Modelo matemático completo generado desde el Wizard 60s — todos los motores abajo reflejan tu problema.
+            </div>
+          )}
+
+          {/* WIZARD GUIADO DE 60 SEGUNDOS */}
+          {showWizard && (
+            <div className="bg-background/80 border border-amber-400/40 rounded-lg p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-3">
+                <div>
+                  <div className="text-[10px] font-display uppercase tracking-wider text-amber-300 font-bold">
+                    ⚡ Asistente Rápido de Decisión (60 Segundos)
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Respondé 4 preguntas simples y el motor sintetiza Matriz de Riesgo, Monte Carlo, Árbol Secuencial y TOPSIS automáticamente.
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {([1, 2, 3, 4] as const).map((step) => (
+                    <button
+                      key={step}
+                      onClick={() => setWizardStep(step)}
+                      className={`px-2.5 h-7 rounded text-[10px] font-display border cursor-pointer transition-colors ${
+                        wizardStep === step
+                          ? 'border-amber-400 bg-amber-400/20 text-amber-300 font-bold'
+                          : 'border-border text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Paso {step}/4
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {wizardStep === 1 && (
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="md:col-span-3">
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      1A. ¿Qué decisión puntual o problema querés resolver hoy?
+                    </label>
+                    <input
+                      type="text"
+                      value={wizardTitle}
+                      onChange={(e) => setWizardTitle(e.target.value)}
+                      placeholder="Ej: Abrir nueva sucursal, renegociar con proveedor clave, cambiar de rol o invertir liquidez..."
+                      className="w-full bg-card border border-border rounded px-3 py-2 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      1B. Escala Fractal del Problema
+                    </label>
+                    <select
+                      value={wizardLevel}
+                      onChange={(e) => setWizardLevel(e.target.value as DecisionLevel)}
+                      className="w-full bg-card border border-border rounded px-3 py-2 text-xs font-display outline-none"
+                    >
+                      {LEVEL_META.map((m) => (
+                        <option key={m.level} value={m.level}>
+                          {m.code} · {m.short} — {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      1C. Reversibilidad si sale mal
+                    </label>
+                    <select
+                      value={wizardReversibility}
+                      onChange={(e) =>
+                        setWizardReversibility(
+                          e.target.value as
+                            | 'reversible'
+                            | 'partially_reversible'
+                            | 'irreversible'
+                        )
+                      }
+                      className="w-full bg-card border border-border rounded px-3 py-2 text-xs font-display outline-none"
+                    >
+                      <option value="reversible">Tipo 2 · Reversible rápido</option>
+                      <option value="partially_reversible">Híbrida · Costo moderado</option>
+                      <option value="irreversible">Tipo 1 · Irreversible / Alta asimetría</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 2 && (
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      2A. Camino Conservador / Piso Seguro
+                    </label>
+                    <input
+                      type="text"
+                      value={wizardOptA}
+                      onChange={(e) => setWizardOptA(e.target.value)}
+                      className="w-full bg-card border border-border rounded px-3 py-2 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      2B. Camino Gradual / Piloto Híbrido
+                    </label>
+                    <input
+                      type="text"
+                      value={wizardOptB}
+                      onChange={(e) => setWizardOptB(e.target.value)}
+                      className="w-full bg-card border border-border rounded px-3 py-2 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      2C. Camino Ofensivo / Apuesta Total
+                    </label>
+                    <input
+                      type="text"
+                      value={wizardOptC}
+                      onChange={(e) => setWizardOptC(e.target.value)}
+                      className="w-full bg-card border border-border rounded px-3 py-2 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 3 && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      3A. Clima del Entorno / Probabilidades de Escenario
+                    </label>
+                    <select
+                      value={wizardRiskProfile}
+                      onChange={(e) =>
+                        setWizardRiskProfile(
+                          e.target.value as 'optimista' | 'equilibrado' | 'adverso_volatil'
+                        )
+                      }
+                      className="w-full bg-card border border-border rounded px-3 py-2 text-xs font-display outline-none"
+                    >
+                      <option value="optimista">
+                        Optimista en expansión (50% Favorable / 35% Base / 15% Estrés)
+                      </option>
+                      <option value="equilibrado">
+                        Equilibrado / Incertidumbre media (30% Favorable / 45% Base / 25% Estrés)
+                      </option>
+                      <option value="adverso_volatil">
+                        Adverso / Alta volatilidad macro (20% Favorable / 40% Base / 40% Estrés)
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      3B. Magnitud del Capital o Impacto en Juego
+                    </label>
+                    <select
+                      value={wizardImpactScale}
+                      onChange={(e) =>
+                        setWizardImpactScale(
+                          e.target.value as 'bajo' | 'medio' | 'alto' | 'critico'
+                        )
+                      }
+                      className="w-full bg-card border border-border rounded px-3 py-2 text-xs font-display outline-none"
+                    >
+                      <option value="bajo">Bajo (cotidiano / reversible sin pérdida crítica)</option>
+                      <option value="medio">Medio (presupuesto operativo trimestral)</option>
+                      <option value="alto">Alto (proyecto estratégico anual / CAPEX)</option>
+                      <option value="critico">Crítico / Existencial (patrimonio o continuidad)</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 4 && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      4A. ¿Quién reacciona a tu movimiento? (Contraparte)
+                    </label>
+                    <input
+                      type="text"
+                      value={wizardCounterpart}
+                      onChange={(e) => setWizardCounterpart(e.target.value)}
+                      placeholder="Ej: Competidor principal, Cliente corporativo, Socio, Gremio, Regulador..."
+                      className="w-full bg-card border border-border rounded px-3 py-2 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      4B. Postura esperada de esa contraparte
+                    </label>
+                    <select
+                      value={wizardPosture}
+                      onChange={(e) =>
+                        setWizardPosture(
+                          e.target.value as 'cooperativa' | 'competitiva' | 'defensiva'
+                        )
+                      }
+                      className="w-full bg-card border border-border rounded px-3 py-2 text-xs font-display outline-none"
+                    >
+                      <option value="cooperativa">Cooperativa (busca acuerdo ganar-ganar)</option>
+                      <option value="competitiva">Competitiva / Suma cero (responde con presión)</option>
+                      <option value="defensiva">Defensiva / Aversa al cambio (bloquea saltos bruscos)</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setWizardStep((prev) => (prev > 1 ? ((prev - 1) as 1 | 2 | 3 | 4) : 1))
+                    }
+                    disabled={wizardStep === 1}
+                    className="px-3 h-8 rounded border border-border text-xs font-display text-muted-foreground hover:text-foreground disabled:opacity-40 cursor-pointer"
+                  >
+                    ← Anterior
+                  </button>
+                  {wizardStep < 4 && (
+                    <button
+                      onClick={() =>
+                        setWizardStep((prev) => (prev < 4 ? ((prev + 1) as 1 | 2 | 3 | 4) : 4))
+                      }
+                      className="px-3 h-8 rounded border border-primary/50 bg-primary/15 text-primary text-xs font-display font-semibold hover:bg-primary/25 cursor-pointer"
+                    >
+                      Siguiente Paso →
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleApplyWizard}
+                  className="px-4 h-8 rounded bg-primary text-primary-foreground font-display text-xs font-bold hover:bg-primary/90 transition-colors cursor-pointer"
+                >
+                  ✨ Calcular y Poblar Todos los Motores
+                </button>
+              </div>
+            </div>
+          )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {regionPack.vitals.map((v, i) => {
@@ -525,7 +1094,10 @@ export default function DecisionesPage() {
       </div>
 
       {/* Veredicto Matemático Inmediato (5 Criterios de Decisión) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div
+        ref={resultsSectionRef}
+        className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3"
+      >
         <div className="bg-primary/10 border border-primary/40 rounded-lg p-4">
           <div className="text-[9px] font-display uppercase tracking-wider text-primary font-bold">
             🏆 Decisión Consenso (Óptima)
@@ -1445,6 +2017,290 @@ export default function DecisionesPage() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* MODAL INFORME EJECUTIVO ONE-PAGER (IMPRIMIBLE / PDF) */}
+      {showExecutiveReport && (
+        <div className="print-sheet-overlay fixed inset-0 z-50 bg-black/75 backdrop-blur-sm overflow-y-auto p-4 md:p-8 flex justify-center items-start">
+          <div className="print-sheet bg-white text-slate-900 rounded-lg shadow-2xl border border-slate-200 w-full max-w-4xl p-6 md:p-10 space-y-6">
+            {/* Barra de acciones (oculta al imprimir) */}
+            <div className="print-hidden flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-200">
+              <div className="text-xs font-display text-slate-500 uppercase tracking-wider">
+                Vista Previa de Informe Ejecutivo · Listo para PDF
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 h-8 rounded bg-slate-900 text-white text-xs font-display font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  🖨️ Imprimir / Guardar como PDF
+                </button>
+                <button
+                  onClick={() => setShowExecutiveReport(false)}
+                  className="px-3 h-8 rounded border border-slate-300 text-slate-700 text-xs font-display hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  ✕ Cerrar
+                </button>
+              </div>
+            </div>
+
+            {/* Cabecera del Documento */}
+            <div className="border-b-2 border-slate-900 pb-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-display text-slate-500 uppercase tracking-wider">
+                <span>MejoraDecisiones OS · Informe Estratégico de Decisión</span>
+                <span>{reportTimestamp}</span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 leading-tight">
+                {decisionTitle}
+              </h2>
+              <div className="flex flex-wrap gap-2 text-xs font-display">
+                <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-300 text-slate-800">
+                  {regionPack.flag} Región: {regionPack.name}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-300 text-slate-800">
+                  Escala: {LEVEL_META.find((m) => m.level === activeLevel)?.code} ·{' '}
+                  {LEVEL_META.find((m) => m.level === activeLevel)?.short}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-300 text-slate-800">
+                  {reversibility === 'reversible'
+                    ? 'Puerta Tipo 2: Reversible'
+                    : reversibility === 'partially_reversible'
+                    ? 'Híbrida: Parcialmente Reversible'
+                    : 'Puerta Tipo 1: Irreversible'}
+                </span>
+              </div>
+
+              {/* Vitales Macro del País */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
+                {regionPack.vitals.map((v, i) => {
+                  const resolvedVal = (() => {
+                    if (region === 'AR' && i === 0 && live.inflacion?.length) {
+                      return `${live.inflacion[live.inflacion.length - 1].valor.toFixed(1)}%`
+                    }
+                    if (region === 'AR' && i === 1 && live.reservas) {
+                      return `USD ${(live.reservas.valor / 1000).toFixed(1)}B`
+                    }
+                    if (
+                      region !== 'AR' &&
+                      i === 0 &&
+                      live.worldBank?.inflationAnnualPct !== null &&
+                      live.worldBank?.inflationAnnualPct !== undefined
+                    ) {
+                      return `${live.worldBank.inflationAnnualPct}% (${live.worldBank.year})`
+                    }
+                    return v.value
+                  })()
+                  return (
+                    <div
+                      key={v.label}
+                      className="p-2 rounded bg-slate-50 border border-slate-200"
+                    >
+                      <div className="text-[10px] text-slate-500 font-display">{v.label}</div>
+                      <div className="text-sm font-bold text-slate-900 font-display">
+                        {resolvedVal}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Sección 1: Veredicto de los 5 Criterios + EVPI */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-display uppercase tracking-wider font-bold text-slate-800 border-b border-slate-200 pb-1">
+                1. Veredicto de los 5 Criterios Matemáticos bajo Incertidumbre
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-left text-slate-700 font-display">
+                      <th className="p-2 border border-slate-200">Criterio</th>
+                      <th className="p-2 border border-slate-200">Alternativa Recomendada</th>
+                      <th className="p-2 border border-slate-200">Métrica Clave</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-2 border border-slate-200 font-semibold">
+                        Consenso Multi-Criterio (Recomendación Principal)
+                      </td>
+                      <td className="p-2 border border-slate-200 font-bold text-blue-800">
+                        {uncertaintyResult.recommendations.consensusPick?.name}
+                      </td>
+                      <td className="p-2 border border-slate-200 font-display">
+                        EV: {uncertaintyResult.recommendations.consensusPick?.expectedValue.toFixed(1)} pts
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 border border-slate-200">
+                        Valor Esperado (Bayes-Laplace)
+                      </td>
+                      <td className="p-2 border border-slate-200">
+                        {uncertaintyResult.recommendations.expectedValueBest?.name}
+                      </td>
+                      <td className="p-2 border border-slate-200 font-display">
+                        {uncertaintyResult.recommendations.expectedValueBest?.expectedValue.toFixed(1)} pts
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 border border-slate-200">
+                        Maximin de Wald (Piso de Supervivencia)
+                      </td>
+                      <td className="p-2 border border-slate-200">
+                        {uncertaintyResult.recommendations.maximinWaldBest?.name}
+                      </td>
+                      <td className="p-2 border border-slate-200 font-display">
+                        Peor caso: {uncertaintyResult.recommendations.maximinWaldBest?.minPayoff.toFixed(1)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 border border-slate-200">
+                        Minimax Regret de Savage (Mínimo Arrepentimiento)
+                      </td>
+                      <td className="p-2 border border-slate-200">
+                        {uncertaintyResult.recommendations.minimaxRegretSavageBest?.name}
+                      </td>
+                      <td className="p-2 border border-slate-200 font-display">
+                        Regret máx: {uncertaintyResult.recommendations.minimaxRegretSavageBest?.maxRegret.toFixed(1)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 border border-slate-200">
+                        Hurwicz (α={alphaHurwicz.toFixed(2)}) &amp; Prospect Theory (Ariely λ={lambdaAriely})
+                      </td>
+                      <td className="p-2 border border-slate-200">
+                        {uncertaintyResult.recommendations.hurwiczBest?.name} /{' '}
+                        {uncertaintyResult.recommendations.prospectTheoryBest?.name}
+                      </td>
+                      <td className="p-2 border border-slate-200 font-display">
+                        EVPI: {uncertaintyResult.evpi.evpi.toFixed(1)} pts (
+                        {uncertaintyResult.evpi.evpi > 12 ? 'Investigar antes' : 'Info suficiente'})
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Sección 2: Riesgo Estocástico (Monte Carlo) y Kelly */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-display uppercase tracking-wider font-bold text-slate-800 border-b border-slate-200 pb-1">
+                2. Riesgo Estocástico (Monte Carlo {mcResult.iterations.toLocaleString('es-AR')} iteraciones) y Capital Óptimo
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
+                  <div className="text-[10px] text-slate-500">Probabilidad de Éxito (&gt;0)</div>
+                  <div className="text-base font-bold font-display text-emerald-700">
+                    {mcResult.probabilityPositive.toFixed(1)}%
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
+                  <div className="text-[10px] text-slate-500">Mediana P50 / Rango P10–P90</div>
+                  <div className="text-sm font-bold font-display text-slate-900">
+                    {mcResult.median.toFixed(1)} ({mcResult.p10.toFixed(1)} a {mcResult.p90.toFixed(1)})
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
+                  <div className="text-[10px] text-slate-500">VaR 95% / CVaR 95% (Cola)</div>
+                  <div className="text-sm font-bold font-display text-rose-700">
+                    {mcResult.valueAtRisk95.toFixed(1)} / {mcResult.conditionalVaR95.toFixed(1)}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
+                  <div className="text-[10px] text-slate-500">Asignación Half-Kelly</div>
+                  <div className="text-base font-bold font-display text-blue-800">
+                    {kellyResult.safeKellyPct}% recursos
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded p-2.5 flex flex-wrap justify-between gap-2">
+                <span>
+                  <strong>Principal driver de riesgo (Tornado #1):</strong>{' '}
+                  {mcResult.sensitivity[0]?.name ?? 'N/A'} (
+                  {mcResult.sensitivity[0]?.sharePct ?? 0}% de la varianza)
+                </span>
+                <span>
+                  <strong>Prescripción Kelly:</strong> {kellyResult.recommendation}
+                </span>
+              </div>
+            </div>
+
+            {/* Sección 3: Equilibrio Secuencial (SPE) y Ranking TOPSIS */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h3 className="text-xs font-display uppercase tracking-wider font-bold text-slate-800 border-b border-slate-200 pb-1">
+                  3A. Equilibrio Secuencial (Inducción Hacia Atrás / SPE)
+                </h3>
+                <div className="p-3 rounded bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+                  <div>
+                    <strong>Jugada óptima de apertura:</strong>{' '}
+                    <span className="text-blue-800 font-semibold">
+                      {seqResult.optimalFirstMoveLabel}
+                    </span>
+                  </div>
+                  <div>
+                    <strong>Respuesta racional esperada:</strong>{' '}
+                    {seqResult.optimalResponseLabel}
+                  </div>
+                  <div className="font-display text-[11px] text-slate-600">
+                    Pagos en equilibrio: Vos {seqResult.equilibriumPayoffs.firstMover} pts · Contraparte{' '}
+                    {seqResult.equilibriumPayoffs.secondMover} pts
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xs font-display uppercase tracking-wider font-bold text-slate-800 border-b border-slate-200 pb-1">
+                  3B. Ranking Multicriterio TOPSIS &amp; Velocidad
+                </h3>
+                <div className="space-y-1.5">
+                  {topsisResult.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="p-2 rounded bg-slate-50 border border-slate-200 text-xs flex items-center justify-between gap-2"
+                    >
+                      <div>
+                        <span className="font-bold">#{idx + 1} {item.name}</span>
+                        <div className="text-[10px] text-slate-500">{item.actionVelocity}</div>
+                      </div>
+                      <span className="font-display font-bold text-blue-800 shrink-0">
+                        {item.closenessScorePct}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Sección 4: Síntesis de las 4 Lentes Estratégicas */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-display uppercase tracking-wider font-bold text-slate-800 border-b border-slate-200 pb-1">
+                4. Triangulación Epistémica — Consejo de las 4 Lentes Estratégicas
+              </h3>
+              <div className="grid md:grid-cols-2 gap-3">
+                {multiVisionLenses.map((lens) => (
+                  <div
+                    key={lens.id}
+                    className="p-3 rounded bg-slate-50 border border-slate-200 text-xs space-y-1"
+                  >
+                    <div className="font-bold text-slate-900">
+                      {lens.icon} {lens.title}{' '}
+                      <span className="font-normal text-slate-500">({lens.authors})</span>
+                    </div>
+                    <p className="text-slate-700 leading-snug">{lens.diagnosis}</p>
+                    <div className="text-[11px] text-amber-800">
+                      <strong>Punto ciego:</strong> {lens.blindSpotWarning}
+                    </div>
+                    <div className="text-[11px] text-emerald-800">
+                      <strong>Acción:</strong> {lens.tacticalPrescription}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

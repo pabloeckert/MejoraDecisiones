@@ -11,7 +11,14 @@ import {
   Position,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { ACTORS, RELATIONS, ACTOR_KIND_LABELS, type Actor, type ActorKind } from '@/lib/seed-data'
+import {
+  ACTORS,
+  RELATIONS,
+  ACTOR_KIND_LABELS,
+  type Actor,
+  type ActorKind,
+  type Relation,
+} from '@/lib/seed-data'
 import { cn } from '@/lib/utils'
 
 const KIND_COLOR: Record<ActorKind, string> = {
@@ -74,11 +81,15 @@ export function ActorGraph({
   filterRelation,
   selectedId,
   onSelectActor,
+  actors = ACTORS,
+  relations = RELATIONS,
 }: {
   filterKinds: Set<ActorKind>
   filterRelation: 'all' | 'ally' | 'rival' | 'neutral'
   selectedId?: string | null
   onSelectActor?: (id: string | null) => void
+  actors?: Actor[]
+  relations?: Relation[]
 }) {
   const [internalSelected, setInternalSelected] = useState<string | null>(null)
   const selected = selectedId !== undefined ? selectedId : internalSelected
@@ -89,8 +100,8 @@ export function ActorGraph({
   }
 
   const visibleActors = useMemo(
-    () => ACTORS.filter((a) => filterKinds.has(a.kind)),
-    [filterKinds],
+    () => actors.filter((a) => filterKinds.has(a.kind)),
+    [actors, filterKinds],
   )
   const visibleIds = useMemo(() => new Set(visibleActors.map((a) => a.id)), [visibleActors])
 
@@ -105,7 +116,7 @@ export function ActorGraph({
 
   const edges: Edge[] = useMemo(
     () =>
-      RELATIONS.filter(
+      relations.filter(
         (r) =>
           visibleIds.has(r.source) &&
           visibleIds.has(r.target) &&
@@ -131,7 +142,7 @@ export function ActorGraph({
           markerEnd: { type: MarkerType.ArrowClosed, color },
         }
       }),
-    [visibleIds, filterRelation, selected],
+    [relations, visibleIds, filterRelation, selected],
   )
 
   return (

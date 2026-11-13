@@ -1,5 +1,17 @@
 # Changelog — Tablero Nash / MejoraDecisiones
 
+## v5.4.0 — 2026-11-13 (Bloque 1 & Bloque 2: Wizard 60s, Reporte Ejecutivo PDF, Importador JSON y Grafo Multi-Red 4D)
+
+### Added
+- **Wizard Guiado de 60 Segundos (`src/pages/Decisiones.tsx`):** Asistente conversacional de 4 pasos que sintetiza automáticamente matriz de pagos, factores estocásticos de Monte Carlo, árbol secuencial (SPE), criterio de Kelly y ranking TOPSIS desde un problema libre.
+- **Generador de Informe Ejecutivo One-Pager PDF (`src/pages/Decisiones.tsx`, `src/styles.css`):** Vista modal imprimible (`window.print()` con hoja limpia `@media print`) resumiendo contexto macro, 5 criterios bajo incertidumbre + EVPI, distribución Monte Carlo + VaR/CVaR + Kelly, SPE, TOPSIS y las 4 Lentes Estratégicas.
+- **Importador de Paquetes Federados JSON (`src/pages/Decisiones.tsx`):** Carga de archivos `.json` con esquema `mejora.decision-os.v1` restaurando región activa, perfil empresarial y bitácora auditable con validación.
+- **Grafo de Poder Multi-País y Empresarial (`src/lib/seed-data.ts`, `src/components/actor-graph.tsx`, `src/pages/Grafo.tsx`):**
+  - Nuevas redes `GLOBAL_ACTORS` (12 potencias y organismos multipolares) y `ENTERPRISE_ACTORS` (10 stakeholders empresariales arquetípicos) exportadas en `GRAPH_NETWORKS`.
+  - **Vector de 4 Dimensiones de Poder (`getActorPowerVector`):** Desglose Institucional/Veto, Operativo/Movilización, Financiero/Caja y Narrativo/Agenda inspirado en Maquiavelo y Sun Bin.
+  - Creación de stakeholders propios en vivo con persistencia en `localStorage` y salto directo al simulador de decisiones (`/decisiones?level=L3_EMPRESA`).
+- **Tests Unitarios (`src/__tests__/decision-engine.test.ts`):** Agregados tests de puente de federación, cálculo del Vector 4D e integridad referencial de `GRAPH_NETWORKS` (**65 tests totales pasando**).
+
 ## v5.2.0 — 2026-11-13 (Decision OS Completo — Autónomo + Federation-Ready)
 
 ### Added
