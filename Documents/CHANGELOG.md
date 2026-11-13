@@ -1,4 +1,23 @@
-# Changelog — Tablero Nash
+# Changelog — Tablero Nash / MejoraDecisiones
+
+## v5.2.0 — 2026-11-13 (Decision OS Completo — Autónomo + Federation-Ready)
+
+### Added
+- **Documento rector:** `Documents/ARQUITECTURA-DECISION-OS.md` con arquitectura fractal L4–L1, algoritmos matemáticos y protocolo de federación.
+- **Núcleo Matemático Universal (`src/lib/decision-engine.ts`):** Wald Maximin, Savage Minimax Regret, Hurwicz, Prospect Theory (Ariely/Kahneman λ=2.25), EVPI, Simulación de Monte Carlo PERT (3.000 iteraciones con VaR 95%, CVaR 95% y Sensibilidad Tornado), Dominancia Estricta (IESDS), Inducción Hacia Atrás (SPE), Índice de Poder de Banzhaf, TOPSIS, Criterio de Kelly y Actualización Bayesiana.
+- **ContextPacks Internacionales y 4 Lentes (`src/lib/context-packs.ts`):** Soporte para `GLOBAL`, `AR`, `US`, `BR`, `MX` y `EU`, plantillas L4–L1 y Consejo de 4 Lentes Estratégicas (Maquiavelo/Sun Bin, Meadows, Ariely, Drucker/Osterwalder/Moore).
+- **Puente de Federación (`src/lib/federation.ts`):** Persistencia autónoma (Bitácora de Decisiones con Brier Score + Perfil de Empresa) e interfaz `window.MejoraDecisionOS`, `CustomEvent`, `postMessage` y exportación JSON `mejora.decision-os.v1`.
+- **APIs Globales (`src/lib/api-client.ts`, `src/hooks/useLiveIndicators.ts`):** Frankfurter FX (BCE) y World Bank Open Data API junto a DolarAPI, BCRA e INDEC.
+- **Módulo `/decisiones` (`src/pages/Decisiones.tsx`)** y **Command Bar `⌘K` (`src/components/dashboard-shell.tsx`)**.
+- **Suite de tests (`src/__tests__/decision-engine.test.ts`).**
+
+### Changed
+- **Predictor (`src/pages/Predictor.tsx`):** Reemplazado el cascarón estático por Predictor Bayesiano multi-horizonte con auto-calibración en vivo y Brier Score.
+- **Alianzas (`src/pages/Alianzas.tsx`):** Agregada calculadora de Juegos Repetidos (Teorema del Folklore δ*) y simulador interactivo de balance de poder sobre el grafo de relaciones.
+- **Feed (`src/pages/Feed.tsx`):** Convertido en Centro de Inteligencia Multi-Fuente con niveles de evidencia y lectura cruzada en 4 Lentes Estratégicas.
+- **Matriz (`src/pages/Matriz.tsx`):** Poda de estrategias estrictamente dominadas (IESDS) y exportación a JSON.
+- **Escenarios (`src/pages/Escenarios.tsx`):** Estado compartible en URL (`useSearchParams`), sincronización con BCRA/INDEC y puente directo a Decision OS.
+- **Congreso (`src/pages/Congreso.tsx`) y PyMEs (`src/pages/Pymes.tsx`):** Calculadora de Índice de Banzhaf y Gemelo de Exposición Empresarial con Monte Carlo.
 
 ## v5.3.0 — 2026-05-14 (CTO Fases 1-3 completas)
 

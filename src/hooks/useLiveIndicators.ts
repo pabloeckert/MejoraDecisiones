@@ -1,10 +1,23 @@
 import { useEffect, useState } from 'react'
-import { fetchDolar, fetchReservasBCRA, fetchInflacion, type DolarRate, type BcraReservas, type InflacionMensual } from '@/lib/api-client'
+import {
+  fetchDolar,
+  fetchReservasBCRA,
+  fetchInflacion,
+  fetchGlobalFxRates,
+  fetchWorldBankMacro,
+  type DolarRate,
+  type BcraReservas,
+  type InflacionMensual,
+  type GlobalFxRates,
+  type WorldBankMacroSnapshot,
+} from '@/lib/api-client'
 
 export interface LiveIndicators {
   dolar: DolarRate[] | null
   reservas: BcraReservas | null
   inflacion: InflacionMensual[] | null
+  globalFx: GlobalFxRates | null
+  worldBank: WorldBankMacroSnapshot | null
   loading: boolean
   error: string | null
   lastUpdated: Date | null
@@ -12,11 +25,13 @@ export interface LiveIndicators {
 
 const POLL_INTERVAL = 5 * 60 * 1000 // 5 minutos
 
-export function useLiveIndicators(): LiveIndicators {
+export function useLiveIndicators(wbCountryIso = 'ARG'): LiveIndicators {
   const [state, setState] = useState<LiveIndicators>({
     dolar: null,
     reservas: null,
     inflacion: null,
+    globalFx: null,
+    worldBank: null,
     loading: true,
     error: null,
     lastUpdated: null,
@@ -32,11 +47,13 @@ export function useLiveIndicators(): LiveIndicators {
         fetchDolar(),
         fetchReservasBCRA(),
         fetchInflacion(),
+        fetchGlobalFxRates(),
+        fetchWorldBankMacro(wbCountryIso),
       ])
 
       if (cancelled) return
 
-      const [dolarRes, reservasRes, inflacionRes] = results
+      const [dolarRes, reservasRes, inflacionRes, fxRes, wbRes] = results
       const errors: string[] = []
 
       if (dolarRes.status === 'rejected') errors.push('dólar')
@@ -47,6 +64,8 @@ export function useLiveIndicators(): LiveIndicators {
         dolar: dolarRes.status === 'fulfilled' ? dolarRes.value : null,
         reservas: reservasRes.status === 'fulfilled' ? reservasRes.value : null,
         inflacion: inflacionRes.status === 'fulfilled' ? inflacionRes.value : null,
+        globalFx: fxRes.status === 'fulfilled' ? fxRes.value : null,
+        worldBank: wbRes.status === 'fulfilled' ? wbRes.value : null,
         loading: false,
         error: errors.length > 0 ? `Sin datos en vivo: ${errors.join(', ')}` : null,
         lastUpdated: new Date(),
@@ -59,7 +78,7 @@ export function useLiveIndicators(): LiveIndicators {
       cancelled = true
       clearInterval(interval)
     }
-  }, [])
+  }, [wbCountryIso])
 
   return state
 }

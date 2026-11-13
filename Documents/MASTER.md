@@ -2,8 +2,8 @@
 
 > **Trigger:** Cuando digas **"documentar"**, este archivo se actualiza con los trabajos realizados.
 > **Trigger:** Cuando digas **"continuemos"**, leer primero `Documents/CTO-SESSION-STATE.md`.
-> **Última actualización:** 2026-05-14
-> **Versión:** 5.0.0 — CTO Roadmap implementado, CI/CD hardened, UX mejorada
+> **Última actualización:** 2026-11-13
+> **Versión:** 5.2.0 — Decision OS Completo (Autónomo + Federation-Ready, Cero Cascarones)
 
 ---
 
@@ -135,23 +135,24 @@ nash-power-play/
 
 ## 4. Módulos
 
-| Código | Módulo | Ruta | Estado | Datos |
+| Código | Módulo | Ruta | Estado | Datos / Cómputo |
 |--------|--------|------|--------|-------|
-| 00 | Overview / Dashboard | `/` | ✅ | Stats, módulos |
+| 00 | Overview / Dashboard | `/` | ✅ | Stats, weekly diff, lanzador L4–L1 |
+| OS | Decision OS | `/decisiones` | ✅ | Wald, Savage, Ariely, Monte Carlo, Árboles Secuenciales, TOPSIS, 4 Lentes, Bitácora Brier Score, ContextPacks Internacionales |
 | 01 | Grafo de actores | `/grafo` | ✅ | 30 actores, 40+ relaciones |
-| 02 | Matriz de pagos | `/matriz` | ✅ | 6 plantillas, editor N×M, solver Nash puro + mixto |
-| 03 | Escenarios | `/escenarios` | ✅ | 6 sliders, 5 escenarios Nash, guardado de presets |
-| 04 | Indicadores | `/indicadores` | ✅ | 8 KPIs macro, 4 KPIs políticos, 3 charts, 8 sectores |
+| 02 | Matriz de pagos | `/matriz` | ✅ | 6 plantillas, editor N×M, solver Nash puro + mixto, poda IESDS, export JSON |
+| 03 | Escenarios | `/escenarios` | ✅ | 6 sliders, URL state compartible, sincronización APIs BCRA/INDEC, link Decision OS |
+| 04 | Indicadores | `/indicadores` | ✅ | DolarAPI, BCRA, INDEC, Banco Mundial y Frankfurter FX en vivo + sectores |
 | 05 | Pensamiento IA | `/ia` | ✅ | 5 modelos IA, trends, analistas |
-| 06 | PyMEs | `/pymes` | ✅ | 6 sectores, indicadores, políticas |
+| 06 | PyMEs & Gemelo | `/pymes` | ✅ | Gemelo interactivo de exposición empresarial + Monte Carlo + Federación Diagnóstico 4D |
 | 07 | Kanban | `/kanban` | ✅ | 10 escenarios |
-| 08 | Predictor | `/predictor` | ✅ | Escenarios Nash, organismos |
-| 09 | Congreso | `/congreso` | ✅ | Diputados, Senado, agenda |
+| 08 | Predictor | `/predictor` | ✅ | Motor Bayesiano multi-horizonte con auto-calibración en vivo + Brier Score |
+| 09 | Congreso & Banzhaf | `/congreso` | ✅ | Calculadora exacta de Índice de Poder de Banzhaf, quórum, 2/3 y tercio de veto |
 | 10 | Provincias | `/provincias` | ✅ | 24 provincias |
 | 11 | Sombra | `/sombra` | ✅ | Judiciales, digitales, económicos |
 | 12 | Internacional | `/internacional` | ✅ | 8 bloques internacionales |
-| 13 | Alianzas | `/alianzas` | ✅ | Sólidas, débiles, rotas |
-| 14 | Feed | `/feed` | ✅ | 9 fuentes de análisis |
+| 13 | Alianzas | `/alianzas` | ✅ | Calculadora de Juegos Repetidos (Teorema del Folklore δ*) + simulador de balance de poder |
+| 14 | Feed | `/feed` | ✅ | Inteligencia Multi-Fuente con nivel de evidencia + lectura en 4 Lentes |
 
 ---
 

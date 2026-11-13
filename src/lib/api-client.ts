@@ -12,7 +12,7 @@ async function fetchWithCache<T>(url: string, opts?: RequestInit): Promise<T> {
   return data as T
 }
 
-// --- DolarAPI ---
+// --- DolarAPI (Argentina) ---
 
 export interface DolarRate {
   nombre: string
@@ -25,7 +25,7 @@ export async function fetchDolar(): Promise<DolarRate[]> {
   return fetchWithCache<DolarRate[]>('https://api.dolarapi.com/v1/dolares')
 }
 
-// --- BCRA (reservas internacionales) ---
+// --- BCRA (reservas internacionales Argentina) ---
 
 interface BcraResponse {
   status: number
@@ -53,7 +53,7 @@ export async function fetchReservasBCRA(): Promise<BcraReservas | null> {
   return { valor: last.valor, fecha: last.fecha }
 }
 
-// --- INDEC vía datos.gob.ar (inflación IPC) ---
+// --- INDEC vía datos.gob.ar (inflación IPC Argentina) ---
 
 interface IndecSeries {
   data: [string, number][]
@@ -72,4 +72,69 @@ export async function fetchInflacion(): Promise<InflacionMensual[]> {
     mes: fecha.slice(0, 7),
     valor,
   }))
+}
+
+// --- Frankfurter API (Divisas Internacionales BCE sin API key) ---
+
+export interface GlobalFxRates {
+  base: string
+  date: string
+  rates: Record<string, number> // EUR, BRL, MXN, GBP, JPY, etc.
+}
+
+export async function fetchGlobalFxRates(): Promise<GlobalFxRates | null> {
+  const url = 'https://api.frankfurter.app/latest?from=USD&to=EUR,BRL,MXN,GBP,JPY'
+  return fetchWithCache<GlobalFxRates>(url)
+}
+
+// --- World Bank Open Data API (Indicadores Macro Internacionales por País) ---
+
+interface WorldBankEntry {
+  date: string
+  value: number | null
+  country: { id: string; value: string }
+}
+
+export interface WorldBankMacroSnapshot {
+  countryIso: string
+  inflationAnnualPct: number | null
+  gdpGrowthAnnualPct: number | null
+  year: string | null
+}
+
+export async function fetchWorldBankMacro(countryIso: string): Promise<WorldBankMacroSnapshot> {
+  const infUrl = `https://api.worldbank.org/v2/country/${countryIso}/indicator/FP.CPI.TOTL.ZG?format=json&per_page=5`
+  const gdpUrl = `https://api.worldbank.org/v2/country/${countryIso}/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=5`
+
+  const [infRes, gdpRes] = await Promise.allSettled([
+    fetchWithCache<[unknown, WorldBankEntry[]]>(infUrl),
+    fetchWithCache<[unknown, WorldBankEntry[]]>(gdpUrl),
+  ])
+
+  let inflationAnnualPct: number | null = null
+  let gdpGrowthAnnualPct: number | null = null
+  let year: string | null = null
+
+  if (infRes.status === 'fulfilled' && Array.isArray(infRes.value?.[1])) {
+    const valid = infRes.value[1].find((e) => e.value !== null)
+    if (valid && valid.value !== null) {
+      inflationAnnualPct = Number(valid.value.toFixed(2))
+      year = valid.date
+    }
+  }
+
+  if (gdpRes.status === 'fulfilled' && Array.isArray(gdpRes.value?.[1])) {
+    const valid = gdpRes.value[1].find((e) => e.value !== null)
+    if (valid && valid.value !== null) {
+      gdpGrowthAnnualPct = Number(valid.value.toFixed(2))
+      if (!year) year = valid.date
+    }
+  }
+
+  return {
+    countryIso,
+    inflationAnnualPct,
+    gdpGrowthAnnualPct,
+    year,
+  }
 }

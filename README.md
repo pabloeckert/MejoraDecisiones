@@ -16,21 +16,22 @@ Estados de Matriz de pagos, Escenarios, Indicadores, Predictor, Congreso, Alianz
 
 | # | Módulo | Estado |
 |---|--------|--------|
-| 00 | Overview | ✅ |
+| 00 | Overview | ✅ Lanzador multi-escala (L4–L1) + stats y diff |
+| OS | Decision OS (`/decisiones`) | ✅ Motor universal: Wald, Savage, Prospect Theory (Ariely), Monte Carlo, Árboles Secuenciales, TOPSIS, 4 Lentes, Bitácora Brier Score y Context Packs Internacionales |
 | 01 | Grafo de actores | ✅ Grafo interactivo real (`@xyflow/react`), filtros y layout por ideología |
-| 02 | Matriz de pagos | ✅ Equilibrios de Nash puros y mixtos (2×2) calculados de verdad, 6 escenarios |
-| 03 | Escenarios | ✅ Simulador what-if con modelo ponderado de 6 parámetros macro |
-| 04 | Indicadores | 🟡 Parcial — dólar, reservas BCRA e inflación en vivo (DolarAPI, BCRA, datos.gob.ar/INDEC), el resto de los KPIs es estático |
+| 02 | Matriz de pagos | ✅ Equilibrios de Nash puros y mixtos (2×2), poda de dominancia estricta (IESDS), exportación JSON y 6 plantillas |
+| 03 | Escenarios | ✅ Simulador what-if con 6 parámetros, URL compartible y sincronización en vivo con BCRA/INDEC |
+| 04 | Indicadores | ✅ Dólar, reservas BCRA, inflación INDEC, divisas globales (Frankfurter) y Banco Mundial en vivo |
 | 05 | Pensamiento IA | ✅ |
-| 06 | PyMEs | ✅ |
+| 06 | PyMEs & Gemelo | ✅ Simulador interactivo de exposición y resiliencia empresarial (Monte Carlo + Federación Diagnóstico 4D) |
 | 07 | Kanban | ✅ |
-| 08 | Predictor | 🔧 Cascarón — mapea datos estáticos a tarjetas, sin modelo de predicción real |
-| 09 | Congreso | 🔧 Cascarón — sin cómputo, solo datos estáticos |
+| 08 | Predictor | ✅ Motor Bayesiano multi-horizonte con auto-calibración en vivo y Brier Score conectado a Bitácora |
+| 09 | Congreso & Banzhaf | ✅ Calculadora real de poder de coalición (Índice de Banzhaf), quórum y blindaje de vetos |
 | 10 | Provincias | ✅ |
 | 11 | Sombra | ✅ |
 | 12 | Internacional | ✅ |
-| 13 | Alianzas | 🔧 Cascarón — sin cómputo, solo datos estáticos |
-| 14 | Feed | 🔧 Cascarón — sin cómputo, solo datos estáticos |
+| 13 | Alianzas | ✅ Analizador de estabilidad de coaliciones en Juegos Repetidos (Teorema del Folklore) + simulador de balance de poder |
+| 14 | Feed | ✅ Centro de Inteligencia Multi-Fuente con nivel de evidencia y triangulación en 4 Lentes Estratégicas |
 
 ## Stack
 
@@ -55,6 +56,7 @@ Push a `main` → GitHub Actions → GitHub Pages (automático).
 
 | Archivo | Propósito |
 |---------|-----------|
+| `Documents/ARQUITECTURA-DECISION-OS.md` | Informe de diseño y arquitectura del Sistema Operativo Universal de Decisiones (L4–L1, Internacional y Federación) |
 | `Documents/MASTER.md` | Fuente de verdad del proyecto |
 | `Documents/ANALISIS-MULTIDISCIPLINAR.md` | Análisis desde 40+ roles profesionales |
 | `Documents/Nash-Plan-Maestro.docx` | Plan maestro original |

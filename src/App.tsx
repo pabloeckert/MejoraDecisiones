@@ -4,6 +4,7 @@ import { DashboardShell } from './components/dashboard-shell'
 
 // Lazy load all pages for code splitting
 const OverviewPage = lazy(() => import('./pages/Overview'))
+const DecisionesPage = lazy(() => import('./pages/Decisiones'))
 const GrafoPage = lazy(() => import('./pages/Grafo'))
 const MatrizPage = lazy(() => import('./pages/Matriz'))
 const EscenariosPage = lazy(() => import('./pages/Escenarios'))
@@ -36,6 +37,7 @@ function App() {
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/" element={<OverviewPage />} />
+          <Route path="/decisiones" element={<DecisionesPage />} />
           <Route path="/grafo" element={<GrafoPage />} />
           <Route path="/matriz" element={<MatrizPage />} />
           <Route path="/escenarios" element={<EscenariosPage />} />

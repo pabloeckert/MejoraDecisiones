@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { findPureNash, solve2x2Mixed, type PayoffMatrix, type NashResult } from '@/lib/nash-solver'
+import { findStrictlyDominatedStrategies } from '@/lib/decision-engine'
 
 type MatrixSize = 2 | 3 | 4
 
@@ -69,6 +70,31 @@ export default function MatrizPage() {
     const mixed = solve2x2Mixed(matrix.rows, matrix.cols)
     return { pure, mixed }
   }, [matrix])
+
+  const dominated = useMemo(
+    () => findStrictlyDominatedStrategies(matrix.rows, matrix.cols),
+    [matrix]
+  )
+
+  const handleExportJson = useCallback(() => {
+    const payload = {
+      size,
+      rowLabels,
+      colLabels,
+      matrix,
+      nash,
+      dominated,
+      template: activeTemplate || 'custom',
+      exportedAt: new Date().toISOString(),
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `matriz-nash-${size}x${size}-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [size, rowLabels, colLabels, matrix, nash, dominated, activeTemplate])
 
   const loadTemplate = useCallback((key: string) => {
     const t = TEMPLATES[key as keyof typeof TEMPLATES]
@@ -148,20 +174,28 @@ export default function MatrizPage() {
         ))}
       </div>
 
-      {/* Size selector */}
-      <div className="mt-4 flex items-center gap-3">
-        <span className="text-xs font-display text-muted-foreground">Tamaño:</span>
-        {[2, 3, 4].map(s => (
-          <button
-            key={s}
-            onClick={() => resize(s as MatrixSize)}
-            className={`px-2.5 h-6 rounded-md border text-[10px] font-display ${
-              size === s ? 'border-primary/40 text-primary bg-primary/10' : 'border-border/40 text-muted-foreground'
-            }`}
-          >
-            {s}×{s}
-          </button>
-        ))}
+      {/* Size selector + Export */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-display text-muted-foreground">Tamaño:</span>
+          {[2, 3, 4].map(s => (
+            <button
+              key={s}
+              onClick={() => resize(s as MatrixSize)}
+              className={`px-2.5 h-6 rounded-md border text-[10px] font-display cursor-pointer ${
+                size === s ? 'border-primary/40 text-primary bg-primary/10' : 'border-border/40 text-muted-foreground'
+              }`}
+            >
+              {s}×{s}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={handleExportJson}
+          className="px-3 h-7 rounded-md border border-primary/40 bg-primary/10 text-[10px] font-display text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+        >
+          ⬇ Exportar Matriz JSON
+        </button>
       </div>
 
       {/* Matrix Editor */}
@@ -306,6 +340,31 @@ export default function MatrizPage() {
             </p>
           )}
         </div>
+      </div>
+
+      {/* Dominated Strategies (IESDS) */}
+      <div className="mt-6 bg-card border border-border/60 rounded-lg p-5">
+        <h2 className="font-display text-xs uppercase tracking-wider text-primary font-semibold mb-2">
+          Poda de Estrategias Estrictamente Dominadas (IESDS)
+        </h2>
+        {dominated.dominatedRows.length === 0 && dominated.dominatedCols.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Ninguna estrategia está estrictamente dominada: todas las opciones conservan escenarios donde rinden mejor que otra alternativa.
+          </p>
+        ) : (
+          <div className="space-y-1.5 text-xs">
+            {dominated.dominatedRows.map((d, i) => (
+              <div key={`dr-${i}`} className="text-amber-400 font-display">
+                ⚠ Jugador Fila: <strong className="text-foreground">"{rowLabels[d.dominated]}"</strong> está estrictamente dominada por <strong className="text-primary">"{rowLabels[d.dominatedBy]}"</strong> (conviene descartarla).
+              </div>
+            ))}
+            {dominated.dominatedCols.map((d, i) => (
+              <div key={`dc-${i}`} className="text-amber-400 font-display">
+                ⚠ Jugador Columna: <strong className="text-foreground">"{colLabels[d.dominated]}"</strong> está estrictamente dominada por <strong className="text-signal-ally">"{colLabels[d.dominatedBy]}"</strong> (conviene descartarla).
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Template description */}

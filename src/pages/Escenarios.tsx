@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { SCENARIOS } from '@/lib/data/scenarios'
+import { useLiveIndicators } from '@/hooks/useLiveIndicators'
 
 type Params = {
   inflacion: number
@@ -17,6 +19,11 @@ const DEFAULT_PARAMS: Params = {
   reservas: 35,
   pobreza: 32,
   riesgo: 650,
+}
+
+function clamp(val: number, min: number, max: number): number {
+  if (!Number.isFinite(val)) return min
+  return Math.max(min, Math.min(max, val))
 }
 
 function computeScenario(p: Params) {
@@ -69,11 +76,11 @@ function computeScenario(p: Params) {
 
 function getVerdict(result: ReturnType<typeof computeScenario>): { text: string; color: string } {
   const max = Math.max(result.consolidacion, result.paralisis, result.shock, result.provincias, result.ruptura)
-  if (max === result.consolidacion) return { text: "Nash cooperativo — El equilibrio favorece la consolidación del oficialismo.", color: "text-signal-ally" }
-  if (max === result.paralisis) return { text: "Desequilibrio — La interna paraliza la capacidad de acción.", color: "text-signal-warn" }
-  if (max === result.shock) return { text: "Crisis — Shock externo desestabiliza el equilibrio.", color: "text-signal-rival" }
-  if (max === result.provincias) return { text: "Nuevo equilibrio — Las provincias emergen como tercer polo.", color: "text-chart-4" }
-  return { text: "Ruptura sistémica — El equilibrio migra a crisis.", color: "text-destructive" }
+  if (max === result.consolidacion) return { text: 'Nash cooperativo — El equilibrio favorece la consolidación del oficialismo.', color: 'text-signal-ally' }
+  if (max === result.paralisis) return { text: 'Desequilibrio — La interna paraliza la capacidad de acción.', color: 'text-signal-warn' }
+  if (max === result.shock) return { text: 'Crisis — Shock externo desestabiliza el equilibrio.', color: 'text-signal-rival' }
+  if (max === result.provincias) return { text: 'Nuevo equilibrio — Las provincias emergen como tercer polo.', color: 'text-chart-4' }
+  return { text: 'Ruptura sistémica — El equilibrio migra a crisis.', color: 'text-destructive' }
 }
 
 const SLIDERS: { key: keyof Params; label: string; min: number; max: number; step: number; unit: string; hint: string }[] = [
@@ -85,26 +92,93 @@ const SLIDERS: { key: keyof Params; label: string; min: number; max: number; ste
   { key: 'riesgo', label: 'Riesgo país', min: 300, max: 1000, step: 10, unit: 'bps', hint: 'EMBIG+' },
 ]
 
+function parseParamsFromUrl(searchParams: URLSearchParams): Params {
+  const num = (k: string, fallback: number, min: number, max: number) => {
+    const raw = searchParams.get(k)
+    if (raw === null) return fallback
+    const parsed = Number(raw)
+    return Number.isFinite(parsed) ? clamp(parsed, min, max) : fallback
+  }
+  return {
+    inflacion: num('inf', DEFAULT_PARAMS.inflacion, 10, 50),
+    popularidad: num('pop', DEFAULT_PARAMS.popularidad, 20, 65),
+    fragmentacion: num('frag', DEFAULT_PARAMS.fragmentacion, 20, 80),
+    reservas: num('res', DEFAULT_PARAMS.reservas, 10, 60),
+    pobreza: num('pob', DEFAULT_PARAMS.pobreza, 20, 45),
+    riesgo: num('rie', DEFAULT_PARAMS.riesgo, 300, 1000),
+  }
+}
+
 export default function EscenariosPage() {
-  const [params, setParams] = useState<Params>(DEFAULT_PARAMS)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [params, setParams] = useState<Params>(() => parseParamsFromUrl(searchParams))
   const [presets, setPresets] = useState<{ name: string; params: Params }[]>([])
+  const [copiedUrl, setCopiedUrl] = useState(false)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
+  const live = useLiveIndicators()
 
   const result = useMemo(() => computeScenario(params), [params])
   const verdict = useMemo(() => getVerdict(result), [result])
 
   const updateParam = (key: keyof Params, value: number) => {
-    setParams(prev => ({ ...prev, [key]: value }))
+    setParams((prev) => ({ ...prev, [key]: value }))
   }
 
-  const resetParams = () => setParams(DEFAULT_PARAMS)
+  const resetParams = () => {
+    setParams(DEFAULT_PARAMS)
+    setSearchParams({})
+    setSyncMessage(null)
+  }
 
   const savePreset = () => {
     const name = prompt('Nombre del escenario:')
-    if (name) setPresets(prev => [...prev, { name, params: { ...params } }])
+    if (name) setPresets((prev) => [...prev, { name, params: { ...params } }])
   }
 
   const loadPreset = (preset: { params: Params }) => {
     setParams({ ...preset.params })
+  }
+
+  const handleSyncLive = () => {
+    const updates: Partial<Params> = {}
+    const notes: string[] = []
+
+    const lastInfl = live.inflacion?.[live.inflacion.length - 1]?.valor
+    if (lastInfl !== undefined) {
+      const annualized = Math.round((Math.pow(1 + lastInfl / 100, 12) - 1) * 100)
+      updates.inflacion = clamp(annualized, 10, 50)
+      notes.push(`Inflación anualizada ${updates.inflacion}% (base IPC ${lastInfl.toFixed(1)}%/mes)`)
+    }
+
+    if (live.reservas?.valor !== undefined) {
+      const resBillions = Math.round(live.reservas.valor / 1000)
+      updates.reservas = clamp(resBillions, 10, 60)
+      notes.push(`Reservas BCRA ${updates.reservas} MM USD`)
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setParams((prev) => ({ ...prev, ...updates }))
+      setSyncMessage(`Sincronizado en vivo: ${notes.join(' · ')}`)
+    } else {
+      setSyncMessage('APIs en vivo aún sin datos disponibles — se mantienen los valores actuales.')
+    }
+  }
+
+  const handleShareScenarioUrl = () => {
+    const qs = new URLSearchParams({
+      inf: String(params.inflacion),
+      pop: String(params.popularidad),
+      frag: String(params.fragmentacion),
+      res: String(params.reservas),
+      pob: String(params.pobreza),
+      rie: String(params.riesgo),
+    })
+    setSearchParams(qs)
+    const baseHref = window.location.href.split('?')[0]
+    const fullUrl = `${baseHref}?${qs.toString()}`
+    navigator.clipboard?.writeText(fullUrl).catch(() => {})
+    setCopiedUrl(true)
+    setTimeout(() => setCopiedUrl(false), 2500)
   }
 
   const scenarios = [
@@ -117,14 +191,45 @@ export default function EscenariosPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] px-6 py-8">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="font-display text-[9px] text-primary/50 font-bold tracking-wider">03</span>
-        <div className="h-px w-8 bg-primary/20" />
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-display text-[9px] text-primary/50 font-bold tracking-wider">03</span>
+            <div className="h-px w-8 bg-primary/20" />
+          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight">Escenarios</h1>
+          <p className="text-muted-foreground text-xs mt-1 max-w-xl">
+            Simulador what-if. Ajustá los parámetros, sincronizá con APIs en vivo o compartí tu escenario por URL.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleSyncLive}
+            className="px-3 h-8 rounded-md border border-primary/40 bg-primary/10 text-[11px] font-display text-primary font-semibold hover:bg-primary/20 transition-colors cursor-pointer"
+          >
+            ⚡ Sincronizar con APIs en Vivo (BCRA/INDEC)
+          </button>
+          <button
+            onClick={handleShareScenarioUrl}
+            className="px-3 h-8 rounded-md border border-border text-[11px] font-display text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+          >
+            {copiedUrl ? '✓ URL Copiada' : '🔗 Compartir URL del Escenario'}
+          </button>
+          <Link
+            to="/decisiones?level=L4_MACRO"
+            className="px-3 h-8 rounded-md bg-primary text-primary-foreground text-[11px] font-display font-semibold flex items-center gap-1 hover:bg-primary/90 transition-colors"
+          >
+            Evaluar impacto de este escenario en Decision OS →
+          </Link>
+        </div>
       </div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Escenarios</h1>
-      <p className="text-muted-foreground text-xs mt-1 max-w-xl">
-        Simulador what-if. Ajustá los parámetros y observá cómo se desplazan los equilibrios de Nash.
-      </p>
+
+      {syncMessage && (
+        <div className="mt-4 bg-primary/10 border border-primary/30 rounded-md px-4 py-2 text-xs font-display text-primary">
+          {syncMessage}
+        </div>
+      )}
 
       <div className="mt-8 grid lg:grid-cols-[1fr_300px] gap-8">
         {/* Main results */}
@@ -173,7 +278,7 @@ export default function EscenariosPage() {
           <div className="bg-card border border-border/60 rounded-lg p-4 sticky top-20">
             <div className="flex items-center justify-between mb-4">
               <span className="font-display text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">Parámetros</span>
-              <button onClick={resetParams} className="text-[10px] font-display text-primary hover:underline">Reset</button>
+              <button onClick={resetParams} className="text-[10px] font-display text-primary hover:underline cursor-pointer">Reset</button>
             </div>
 
             {SLIDERS.map(s => (
@@ -195,7 +300,7 @@ export default function EscenariosPage() {
               </div>
             ))}
 
-            <button onClick={savePreset} className="w-full mt-2 px-3 h-8 rounded-md border border-border text-xs font-display text-muted-foreground hover:text-foreground transition-colors">
+            <button onClick={savePreset} className="w-full mt-2 px-3 h-8 rounded-md border border-border text-xs font-display text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
               Guardar escenario
             </button>
 
@@ -206,7 +311,7 @@ export default function EscenariosPage() {
                   <button
                     key={i}
                     onClick={() => loadPreset(p)}
-                    className="w-full text-left px-2 py-1.5 rounded text-xs font-display text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    className="w-full text-left px-2 py-1.5 rounded text-xs font-display text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
                   >
                     {p.name}
                   </button>

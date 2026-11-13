@@ -2,7 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import App from './App'
+import { registerFederationBridge } from './lib/federation'
 import './styles.css'
+
+// Registrar puente de federación autónomo para integraciones futuras (MejoraApp / Diagnóstico 4D)
+registerFederationBridge()
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
