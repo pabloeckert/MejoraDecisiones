@@ -1,5 +1,14 @@
 # Changelog — Tablero Nash / MejoraDecisiones
 
+## v5.5.0 — 2026-11-14 (Bloque 3 Completo: 100% de los 16 Módulos Interactivos Decision OS)
+
+### Changed
+- **Kanban Interactivo (`src/pages/Kanban.tsx`):** Persistencia en `localStorage`, movimiento entre columnas (`Emerging`, `Active`, `Dominant`, `Collapsed`), recalibración de probabilidades (`1%–95%`), KPIs de exposición de riesgo, creación de nuevas hipótesis y salto directo a `/decisiones`.
+- **Sintetizador de Consenso IA (`src/pages/IA.tsx`):** Ponderación dinámica de credibilidad por modelo (`0%–100%`), Índice de Consenso Ponderado + Dispersión Epistémica ($\sigma$), Auditor de Hipótesis Propia en las 4 Lentes Estratégicas y Termómetro Bullish/Neutral/Bearish de analistas.
+- **Radar Internacional y Shocks Globales (`src/pages/Internacional.tsx`):** Conectado a cotizaciones BCE Frankfurter y Banco Mundial por región, con Simulador de Transmisión de 5 Shocks Geopolíticos (Fed, Aranceles, Energía, Mercosur-UE, Devaluación Brasil) y filtrado seguro de bloques internacionales.
+- **Simulador de Pacto Federal (`src/pages/Provincias.tsx`):** Cambio en vivo de postura por provincia (`Aliada`, `Bisagra`, `Hostil`), escenarios rápidos de *Provincias Unidas*, cálculo de Mayoría Pacto Fiscal (`13/24`) y Tercio de Blindaje (`8/24`), e Índice de Poder de Coalición de Banzhaf territorial.
+- **Mapeo de Operadores en la Sombra (`src/pages/Sombra.tsx`):** Doble contexto (`🇦🇷 Poder Informal Político` y `🏢 Poder Informal en Empresas / Gatekeepers`), operadores propios persistidos en `localStorage` y diagnóstico táctico Maquiavelo / Sun Bin (Veto Oculto, Acceso, Agenda, Ruptura, Neutralización y Alineamiento).
+
 ## v5.4.0 — 2026-11-13 (Bloque 1 & Bloque 2: Wizard 60s, Reporte Ejecutivo PDF, Importador JSON y Grafo Multi-Red 4D)
 
 ### Added
