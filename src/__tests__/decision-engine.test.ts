@@ -17,6 +17,7 @@ import {
 import {
   exportFederationBundle,
   importFederationBundle,
+  parseFederatedDecisionQuery,
   FEDERATION_SCHEMA_VERSION,
 } from '../lib/federation'
 import {
@@ -224,5 +225,22 @@ describe('Federation Bridge & Multi-Network 4D Power Graph', () => {
         expect(ids.has(rel.target)).toBe(true)
       })
     })
+  })
+
+  it('hidrata borradores federados desde URLSearchParams y descarta niveles/regiones inválidos', () => {
+    const valid = parseFederatedDecisionQuery(
+      new URLSearchParams(
+        'title=Expansi%C3%B3n%20UE&level=L3_EMPRESA&region=EU&optA=Filial%20Directa&optB=Partner%20Local&optC=Postergar'
+      )
+    )
+    expect(valid.title).toBe('Expansión UE')
+    expect(valid.level).toBe('L3_EMPRESA')
+    expect(valid.region).toBe('EU')
+    expect(valid.alternatives).toEqual(['Filial Directa', 'Partner Local', 'Postergar'])
+
+    const invalid = parseFederatedDecisionQuery(new URLSearchParams('level=L99_FAKE&region=MARS'))
+    expect(invalid.level).toBeUndefined()
+    expect(invalid.region).toBeUndefined()
+    expect(invalid.alternatives).toBeUndefined()
   })
 })

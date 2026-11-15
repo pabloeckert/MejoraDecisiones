@@ -280,6 +280,48 @@ function emitFederationEvent(type: string, detail: unknown): void {
   }
 }
 
+export interface FederatedUrlDecisionDraft {
+  title?: string
+  level?: DecisionLevel
+  region?: RegionCode
+  alternatives?: string[]
+}
+
+const VALID_LEVELS: DecisionLevel[] = ['L4_MACRO', 'L3_EMPRESA', 'L2_PERSONAL', 'L1_COTIDIANO']
+const VALID_REGIONS: RegionCode[] = ['GLOBAL', 'AR', 'US', 'BR', 'MX', 'EU']
+
+/**
+ * Hidrata parámetros de decisión entrantes desde URL query params
+ * (enlaces desde Indicadores Centinela, MejoraApp, Diagnóstico 4D u otros módulos).
+ */
+export function parseFederatedDecisionQuery(
+  params: URLSearchParams,
+): FederatedUrlDecisionDraft {
+  const draft: FederatedUrlDecisionDraft = {}
+
+  const rawTitle = params.get('title')?.trim()
+  if (rawTitle) draft.title = rawTitle
+
+  const rawLevel = params.get('level')?.trim() as DecisionLevel | undefined
+  if (rawLevel && VALID_LEVELS.includes(rawLevel)) {
+    draft.level = rawLevel
+  }
+
+  const rawRegion = params.get('region')?.trim() as RegionCode | undefined
+  if (rawRegion && VALID_REGIONS.includes(rawRegion)) {
+    draft.region = rawRegion
+  }
+
+  const optA = params.get('optA')?.trim()
+  const optB = params.get('optB')?.trim()
+  const optC = params.get('optC')?.trim()
+  if (optA && optB && optC) {
+    draft.alternatives = [optA, optB, optC]
+  }
+
+  return draft
+}
+
 declare global {
   interface Window {
     MejoraDecisionOS?: {
@@ -293,6 +335,8 @@ declare global {
   }
 }
 
+let federationMessageListenerAttached = false
+
 export function registerFederationBridge(): void {
   if (typeof window === 'undefined') return
   window.MejoraDecisionOS = {
@@ -302,5 +346,30 @@ export function registerFederationBridge(): void {
     getEnterpriseProfile: loadEnterpriseProfile,
     setEnterpriseProfile: saveEnterpriseProfile,
     getJournal: loadDecisionJournal,
+  }
+
+  if (!federationMessageListenerAttached) {
+    federationMessageListenerAttached = true
+    window.addEventListener('message', (event: MessageEvent) => {
+      const data = event.data as
+        | {
+            target?: string
+            type?: string
+            action?: string
+            payload?: Partial<FederationPayload>
+            profile?: EnterpriseExposureProfile
+          }
+        | undefined
+      if (!data || data.target !== 'MejoraDecisionesOS' || data.type !== 'MEJORA_FEDERATION_CMD') {
+        return
+      }
+      if (data.action === 'PING') {
+        emitFederationEvent('mejora:federation-pong', exportFederationBundle())
+      } else if (data.action === 'IMPORT_BUNDLE' && data.payload) {
+        importFederationBundle(data.payload)
+      } else if (data.action === 'SET_ENTERPRISE_PROFILE' && data.profile) {
+        saveEnterpriseProfile(data.profile)
+      }
+    })
   }
 }

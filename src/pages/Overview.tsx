@@ -4,7 +4,18 @@ import { StatCard } from '@/components/stat-card'
 import { ACTORS, RELATIONS } from '@/lib/seed-data'
 import { SCENARIOS } from '@/lib/data/scenarios'
 import { loadSnapshot, saveSnapshot, computeDiff, type WeeklyDiff } from '@/lib/weekly-diff'
-import { loadDecisionJournal } from '@/lib/federation'
+import {
+  loadActiveRegion,
+  loadEnterpriseProfile,
+  loadDecisionJournal,
+  computeCalibrationMetrics,
+  exportFederationBundle,
+  buildDiagnostico4DFederatedUrl,
+  FEDERATION_SCHEMA_VERSION,
+} from '@/lib/federation'
+import { REGIONAL_CONTEXT_PACKS } from '@/lib/context-packs'
+
+const ONBOARDING_KEY = 'mejora_os_onboarded_v1'
 
 const DECISION_SCALES = [
   {
@@ -68,7 +79,43 @@ export default function OverviewPage() {
   const allies = RELATIONS.filter((r) => r.type === 'ally').length
   const rivals = RELATIONS.filter((r) => r.type === 'rival').length
   const neutral = RELATIONS.filter((r) => r.type === 'neutral').length
-  const journalCount = loadDecisionJournal().length
+  const journal = loadDecisionJournal()
+  const journalCount = journal.length
+  const calibration = computeCalibrationMetrics(journal)
+  const activeRegion = loadActiveRegion()
+  const regionPack = REGIONAL_CONTEXT_PACKS[activeRegion]
+  const enterprise = loadEnterpriseProfile()
+  const bridgeUrl = buildDiagnostico4DFederatedUrl('overview_console')
+
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
+    try {
+      return !localStorage.getItem(ONBOARDING_KEY)
+    } catch {
+      return false
+    }
+  })
+
+  const closeOnboarding = (markSeen = true) => {
+    if (markSeen) {
+      try {
+        localStorage.setItem(ONBOARDING_KEY, '1')
+      } catch {
+        // ignore
+      }
+    }
+    setShowOnboarding(false)
+  }
+
+  const handleDownloadBackup = () => {
+    const payload = exportFederationBundle()
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `mejora-decision-os-${payload.activeRegion.toLowerCase()}-backup.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const [diff] = useState<WeeklyDiff | null>(() => {
     const current = { allies, rivals, neutral, actors: ACTORS.length, scenarios: SCENARIOS.length }
@@ -137,6 +184,13 @@ export default function OverviewPage() {
             >
               Matriz de Nash
             </Link>
+            <button
+              type="button"
+              onClick={() => setShowOnboarding(true)}
+              className="inline-flex items-center gap-2 px-4 h-10 rounded-md border border-border text-muted-foreground hover:text-foreground font-display text-xs hover:bg-accent/50 transition-colors cursor-pointer"
+            >
+              🧭 Guía Rápida (60s)
+            </button>
           </div>
         </div>
       </section>
@@ -262,6 +316,193 @@ export default function OverviewPage() {
           ))}
         </div>
       </section>
+
+      {/* Consola Ejecutiva de Estado & Puente de Federación */}
+      <section className="mx-auto max-w-[1600px] px-6 pb-16">
+        <div className="bg-card border border-border/60 rounded-lg p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-border/40">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-signal-ally animate-pulse" />
+                <span className="text-[10px] font-display uppercase tracking-[0.2em] text-primary font-semibold">
+                  Consola Ejecutiva de Estado &amp; Puente de Federación
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Estado local autónomo y protocolo activo de sincronización para futuras integraciones del ecosistema Mejora.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadBackup}
+                className="inline-flex items-center gap-1.5 px-3.5 h-8 rounded-md border border-border text-foreground font-display text-[11px] hover:bg-accent/60 transition-colors cursor-pointer"
+              >
+                ⬇ Backup Completo JSON
+              </button>
+              <a
+                href={bridgeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 h-8 rounded-md bg-primary/10 border border-primary/40 text-primary font-display text-[11px] font-semibold hover:bg-primary/20 transition-colors"
+              >
+                Conectar con Diagnóstico 4D →
+              </a>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="rounded-md border border-border/50 bg-background/40 p-4">
+              <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                Cartucho Regional Activo
+              </div>
+              <div className="mt-1.5 font-display text-base font-bold text-foreground">
+                {regionPack.flag} {regionPack.name}
+              </div>
+              <div className="mt-1 text-[11px] font-mono text-muted-foreground">
+                Moneda: {regionPack.currency} · Riesgo base {regionPack.baseParams.riesgo}
+              </div>
+            </div>
+
+            <div className="rounded-md border border-border/50 bg-background/40 p-4">
+              <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                Perfil Empresarial Vinculado
+              </div>
+              <div className="mt-1.5 font-display text-base font-bold text-foreground truncate" title={enterprise.companyName}>
+                {enterprise.companyName}
+              </div>
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                {enterprise.sector} · Exp {enterprise.revenueExportPct}% / Costo USD {enterprise.costDollarizedPct}% · Caja {enterprise.cashRunwayMonths}m
+              </div>
+            </div>
+
+            <div className="rounded-md border border-border/50 bg-background/40 p-4">
+              <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                Bitácora &amp; Calibración Brier
+              </div>
+              <div className="mt-1.5 font-display text-base font-bold text-foreground">
+                {journalCount} {journalCount === 1 ? 'decisión' : 'decisiones'}
+              </div>
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                {calibration.brierScore !== null
+                  ? `Brier ${calibration.brierScore.toFixed(3)} · ${calibration.calibrationGrade} (${calibration.resolvedCount} auditadas)`
+                  : 'Pendiente de auditar resultados reales en /decisiones'}
+              </div>
+            </div>
+
+            <div className="rounded-md border border-border/50 bg-background/40 p-4">
+              <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                Bus de Federación Activo
+              </div>
+              <div className="mt-1.5 font-mono text-xs font-semibold text-signal-ally break-all">
+                {FEDERATION_SCHEMA_VERSION}
+              </div>
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                window.MejoraDecisionOS · CustomEvent · postMessage bidireccional + Query URL
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Modal de Onboarding Interactivo (60s) */}
+      {showOnboarding && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="onboarding-title"
+          onClick={() => closeOnboarding(true)}
+        >
+          <div
+            className="w-full max-w-2xl bg-card border border-primary/30 rounded-lg shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-border/50 pb-4">
+              <div>
+                <div className="text-[10px] font-display uppercase tracking-[0.2em] text-primary font-semibold">
+                  Bienvenido a MejoraDecisiones OS · Arranque en 60 segundos
+                </div>
+                <h2 id="onboarding-title" className="font-display text-xl font-bold text-foreground mt-1">
+                  Cómo convertir incertidumbre en decisiones ejecutables
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => closeOnboarding(true)}
+                className="size-8 rounded-md border border-border/60 text-muted-foreground hover:text-foreground flex items-center justify-center text-xs font-display cursor-pointer"
+                aria-label="Cerrar guía rápida"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="rounded-md border border-border/60 bg-background/50 p-4">
+                <div className="font-mono text-[10px] text-primary font-semibold">PASO 01 · CONTEXTO</div>
+                <div className="font-display text-sm font-semibold text-foreground mt-1">
+                  Elige tu Cartucho Regional &amp; Perfil PyME
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  Opera en modo 🇦🇷 Argentina, 🌐 Global, 🇺🇸 EE.UU., 🇧🇷 Brasil, 🇲🇽 México o 🇪🇺 UE con tipos de cambio y macro en vivo, más la exposición real de tu empresa en <code className="font-mono text-primary">/pymes</code>.
+                </p>
+              </div>
+
+              <div className="rounded-md border border-border/60 bg-background/50 p-4">
+                <div className="font-mono text-[10px] text-primary font-semibold">PASO 02 · ESCALA FRACTAL L4–L1</div>
+                <div className="font-display text-sm font-semibold text-foreground mt-1">
+                  Usa el Wizard Express o Matriz Completa
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  En <code className="font-mono text-primary">/decisiones</code> puedes decidir desde shocks macro geopolíticos (<code className="font-mono">L4</code>) hasta negociaciones cotidianas de 3 minutos (<code className="font-mono">L1</code>).
+                </p>
+              </div>
+
+              <div className="rounded-md border border-border/60 bg-background/50 p-4">
+                <div className="font-mono text-[10px] text-primary font-semibold">PASO 03 · RIGOR + 4 LENTES</div>
+                <div className="font-display text-sm font-semibold text-foreground mt-1">
+                  Simula Monte Carlo, Nash y Sesgos
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  Evalúa tu peor escenario (<span className="text-foreground">Wald</span>), arrepentimiento (<span className="text-foreground">Savage</span>), aversión a la pérdida (<span className="text-foreground">Ariely</span>), <span className="text-foreground">VaR 95%</span> y el Consejo de 4 Lentes Estratégicas.
+                </p>
+              </div>
+
+              <div className="rounded-md border border-border/60 bg-background/50 p-4">
+                <div className="font-mono text-[10px] text-primary font-semibold">PASO 04 · APRENDIZAJE &amp; STOP-LOSS</div>
+                <div className="font-display text-sm font-semibold text-foreground mt-1">
+                  Audita tu Brier Score y Alertas Centinela
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  Guarda cada fallo en la Bitácora para medir tu calibración predictiva y configura disparadores tempranos en <code className="font-mono text-primary">/indicadores</code>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/50">
+              <div className="text-[11px] text-muted-foreground font-display">
+                Tip: Presiona <kbd className="px-1.5 py-0.5 rounded bg-background border border-border font-mono text-[10px]">Ctrl+K</kbd> o <kbd className="px-1.5 py-0.5 rounded bg-background border border-border font-mono text-[10px]">⌘K</kbd> para saltar a cualquier módulo o región.
+              </div>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => closeOnboarding(true)}
+                  className="px-4 h-9 rounded-md border border-border text-xs font-display text-foreground hover:bg-accent/60 transition-colors cursor-pointer"
+                >
+                  Entendido — Explorar tablero
+                </button>
+                <Link
+                  to="/decisiones"
+                  onClick={() => closeOnboarding(true)}
+                  className="inline-flex items-center gap-1.5 px-4 h-9 rounded-md bg-primary text-primary-foreground text-xs font-display font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  Ir a Decision OS →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

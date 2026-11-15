@@ -37,6 +37,7 @@ import {
   computeCalibrationMetrics,
   exportFederationBundle,
   importFederationBundle,
+  parseFederatedDecisionQuery,
   buildDiagnostico4DFederatedUrl,
   type DecisionJournalEntry,
 } from '@/lib/federation'
@@ -81,17 +82,15 @@ const LEVEL_META: {
 
 export default function DecisionesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const initialLevel = (searchParams.get('level') as DecisionLevel) || 'L3_EMPRESA'
-  const initialRegion = (searchParams.get('region') as RegionCode) || loadActiveRegion()
+  const urlDraft = useMemo(
+    () => parseFederatedDecisionQuery(searchParams),
+    [searchParams],
+  )
+  const initialLevel = urlDraft.level ?? 'L3_EMPRESA'
+  const initialRegion = urlDraft.region ?? loadActiveRegion()
 
-  const [region, setRegion] = useState<RegionCode>(
-    ['GLOBAL', 'AR', 'US', 'BR', 'MX', 'EU'].includes(initialRegion) ? initialRegion : 'AR'
-  )
-  const [activeLevel, setActiveLevel] = useState<DecisionLevel>(
-    ['L4_MACRO', 'L3_EMPRESA', 'L2_PERSONAL', 'L1_COTIDIANO'].includes(initialLevel)
-      ? initialLevel
-      : 'L3_EMPRESA'
-  )
+  const [region, setRegion] = useState<RegionCode>(initialRegion)
+  const [activeLevel, setActiveLevel] = useState<DecisionLevel>(initialLevel)
   const [activeEngineTab, setActiveEngineTab] = useState<
     'uncertainty' | 'montecarlo' | 'sequential' | 'topsis'
   >('uncertainty')
@@ -106,8 +105,12 @@ export default function DecisionesPage() {
     [activeLevel]
   )
 
-  const [decisionTitle, setDecisionTitle] = useState<string>(currentTemplate.title)
-  const [alternatives, setAlternatives] = useState<string[]>(currentTemplate.alternatives)
+  const [decisionTitle, setDecisionTitle] = useState<string>(
+    () => urlDraft.title ?? currentTemplate.title,
+  )
+  const [alternatives, setAlternatives] = useState<string[]>(
+    () => urlDraft.alternatives ?? currentTemplate.alternatives,
+  )
   const [scenarios, setScenarios] = useState<string[]>(currentTemplate.scenarios)
   const [probabilities, setProbabilities] = useState<number[]>(
     currentTemplate.probabilities

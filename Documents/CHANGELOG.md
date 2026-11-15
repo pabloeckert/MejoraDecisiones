@@ -1,5 +1,19 @@
 # Changelog — Tablero Nash / MejoraDecisiones
 
+## v5.6.0 — 2026-11-14 (Bloque 4: Alertas Centinela, Comparador Global, Onboarding 60s y Federación Bidireccional)
+
+### Added
+- **Protocolo de Federación Bidireccional & Hidratación URL (`src/lib/federation.ts`, `src/pages/Decisiones.tsx`):**
+  - Nueva función `parseFederatedDecisionQuery(params)` para pre-cargar en `/decisiones` título (`title`), nivel fractal (`level`), región (`region`) y alternativas (`optA`, `optB`, `optC`) desde enlaces profundos o aplicaciones externas del ecosistema Mejora.
+  - Listener `postMessage` bidireccional en `registerFederationBridge()` aceptando comandos `PING`, `IMPORT_BUNDLE` y `SET_ENTERPRISE_PROFILE` bajo el contrato `mejora.decision-os.v1` con respuesta de estado al `event.source`.
+- **Alertas Centinela Stop-Loss y Comparador Global (`src/pages/Indicadores.tsx`):**
+  - Monitor configurable de 4 disparadores tempranos (Donella Meadows) persistido en `localStorage` (`mejora_sentinel_thresholds_v1`): Brecha Cambiaria %, Inflación Mensual INDEC %, Riesgo País (bps) y USD/BRL, con salto directo a `/decisiones?level=L3_EMPRESA&title=...` para activar protocolos pre-armados.
+  - Nueva pestaña `🌐 Comparador Global` (`internacional`) con gráfico de barras comparativo y tabla multi-país en vivo para los 6 cartuchos regionales (`GLOBAL`, `AR`, `US`, `BR`, `MX`, `EU`).
+- **Onboarding 60s y Consola Ejecutiva de Federación (`src/pages/Overview.tsx`):**
+  - Modal interactivo de arranque en 60 segundos (`mejora_os_onboarded_v1`) con guía en 4 pasos y acceso directo en el Hero (`🧭 Guía Rápida (60s)`).
+  - Nueva **Consola Ejecutiva de Estado & Puente de Federación** con resumen en vivo del Cartucho Regional activo, Perfil Empresarial vinculado, Bitácora con Calibración Brier, estado del bus `mejora.decision-os.v1`, descarga de backup JSON y enlace federado hacia Diagnóstico 4D.
+- **Tests Unitarios (`src/__tests__/decision-engine.test.ts`):** Test para `parseFederatedDecisionQuery` validando hidratación de parámetros válidos y descarte de niveles/regiones inválidos (**66 tests totales pasando**).
+
 ## v5.5.0 — 2026-11-14 (Bloque 3 Completo: 100% de los 16 Módulos Interactivos Decision OS)
 
 ### Changed
