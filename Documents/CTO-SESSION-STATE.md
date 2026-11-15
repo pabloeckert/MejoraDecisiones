@@ -1,7 +1,7 @@
 # CTO Session State — Para "continuemos"
 
 > **Instrucción:** Cuando digas "continuemos", Claude lee este archivo primero para retomar exactamente donde quedamos.
-> **Última actualización:** 2026-11-14 (Bloque 4 completo — Alertas Centinela, Comparador Global, Onboarding 60s y Federación Bidireccional v5.6.0)
+> **Última actualización:** 2026-11-15 (Bloque 5 completo — Auditor Pre-Mortem, Reversibilidad Tipo 1 vs 2, Exportadores Markdown/CSV y PWA Offline v5.7.0)
 > **Rama de trabajo:** `main`
 
 ---
@@ -27,6 +27,7 @@ Claude leerá este archivo, entenderá el estado exacto, y continuará desde la 
 | FASE 6 — Grafo Multi-País / Empresarial + Vector 4D | ✅ COMPLETA | 2026-11-13 (`Grafo.tsx`, `seed-data.ts`) |
 | FASE 7 — Elevación Total 16/16 Módulos (Kanban, IA, Intl, Provincias, Sombra) | ✅ COMPLETA | 2026-11-14 (v5.5 Bloque 3) |
 | FASE 8 — Alertas Centinela, Comparador Global, Onboarding 60s y Federación Bidireccional | ✅ COMPLETA | 2026-11-14 (v5.6 Bloque 4: `Indicadores.tsx`, `Overview.tsx`, `federation.ts`) |
+| FASE 9 — Auditor Pre-Mortem, Reversibilidad Tipo 1 vs 2, Exportador Markdown/CSV y PWA Offline | ✅ COMPLETA | 2026-11-15 (v5.7 Bloque 5: `decision-engine.ts`, `Decisiones.tsx`, `sw.js`) |
 
 ---
 
@@ -139,14 +140,15 @@ Claude leerá este archivo, entenderá el estado exacto, y continuará desde la 
 
 ## Métricas de calidad actuales
 
-| Métrica | Antes (Sesión 2) | Actual (v5.6.0 Decision OS) |
+| Métrica | Antes (Sesión 2) | Actual (v5.7.0 Decision OS) |
 |---------|------------------|-----------------------------|
-| Tests | 52 (datos + Nash solver) | 66 (datos + Nash + Decision Engine + 4D Graph + Federación) |
+| Tests | 52 (datos + Nash solver) | 68 (datos + Nash + Decision Engine + 4D Graph + Federación + Pre-Mortem) |
 | CI/CD calidad | ✅ lint+test+build | ✅ lint+test+build (0 errores) |
 | Datos en vivo | 3 APIs (Dólar/BCRA/INDEC) | 5 APIs (Dólar/BCRA/INDEC + Frankfurter BCE + Banco Mundial) + Alertas Centinela |
 | Módulos Interactivos | 5/16 interactivos | 16/16 motores completos + Comparador Global + Onboarding 60s + Consola Federación |
-| Motor Decisiones | Básico (Nash 2×2) | L4–L1 + Wizard 60s + Monte Carlo + Informe PDF + Importador JSON + URL Hydration |
+| Motor Decisiones | Básico (Nash 2×2) | L4–L1 + Wizard 60s + Monte Carlo + Informe PDF + Markdown + CSV + Pre-Mortem |
 | Grafo de Poder | Solo Argentina (30 nodos) | Multi-Red (Argentina / Global / Empresa editable) + Vector 4D |
+| PWA & Offline | manifest estático | Hardened v5.7 (SW Stale-While-Revalidate para APIs y assets) |
 
 ---
 

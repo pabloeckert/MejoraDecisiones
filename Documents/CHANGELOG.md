@@ -1,5 +1,20 @@
 # Changelog — Tablero Nash / MejoraDecisiones
 
+## v5.7.0 — 2026-11-15 (Bloque 5: Auditor Pre-Mortem, Reversibilidad Tipo 1 vs 2, Exportador Markdown/CSV y PWA Offline Hardening)
+
+### Added
+- **Auditor Pre-Mortem & Matriz de Reversibilidad (`src/lib/decision-engine.ts`, `src/pages/Decisiones.tsx`):**
+  - Implementada función matemática y heurística `analyzeReversibilityAndPreMortem(input)` que clasifica decisiones en Puertas Tipo 1 (irreversibles) vs Puertas Tipo 2 (reversibles) de Jeff Bezos, formula la regla de velocidad de ejecución correspondiente y calcula la asignación Barbell de Taleb (reserva segura vs exposición asimétrica).
+  - Simulación retrospectiva de Gary Klein proyectando el fracaso en 12 meses, identificando 3 vectores críticos de falla, canarios tempranos en la mina (disparadores de stop-loss a 30-60 días) y salvaguardas mandatorias antes de ejecutar.
+  - Bloque visual interactivo en `/decisiones` integrado tanto en la vista operativa como en la Sección 5 del Reporte Ejecutivo PDF imprimible.
+- **Exportadores Universales de Decisiones (`src/lib/decision-engine.ts`, `src/pages/Decisiones.tsx`):**
+  - Nueva función `generateDecisionMarkdownReport(data)` para copiar al portapapeles o descargar archivos `.md` formateados con tablas, EV, Wald, Savage, Monte Carlo, TOPSIS, 4 Lentes y Pre-Mortem listos para Obsidian, Notion o actas de directorio.
+  - Nueva función `generateDecisionJournalCsv(entries)` y botón en la Bitácora para exportar el historial auditable completo en formato CSV compatible con Excel y Python.
+- **Hardening PWA Offline & Cache de Mercado Global (`public/manifest.json`, `public/sw.js`, `index.html`):**
+  - Service worker actualizado (`v5.7.0`) con estrategia *Stale-While-Revalidate* para APIs externas (DolarAPI, Frankfurter BCE, Banco Mundial, BCRA, INDEC), permitiendo que todo el Decision OS funcione sin conexión en aviones o viajes.
+  - Manifiesto PWA y metadatos actualizados a `MejoraDecisiones · Decision OS`.
+- **Tests Unitarios (`src/__tests__/decision-engine.test.ts`):** 2 nuevos tests cubriendo reversibilidad, simulación Pre-Mortem, generación Markdown y serialización CSV (**68 tests totales pasando**).
+
 ## v5.6.0 — 2026-11-14 (Bloque 4: Alertas Centinela, Comparador Global, Onboarding 60s y Federación Bidireccional)
 
 ### Added

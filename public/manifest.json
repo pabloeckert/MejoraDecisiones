@@ -1,11 +1,12 @@
 {
-  "name": "Tablero Nash",
-  "short_name": "TableroNash",
-  "description": "Dashboard analítico sobre poder, alianzas y escenarios políticos en Argentina, construido con teoría de juegos.",
-  "start_url": "/nash-power-play/",
+  "name": "MejoraDecisiones · Decision OS",
+  "short_name": "Decision OS",
+  "description": "Sistema Operativo Universal de Toma de Decisiones, Predicciones y Escenarios Bajo Incertidumbre.",
+  "start_url": "/MejoraDecisiones/",
+  "scope": "/MejoraDecisiones/",
   "display": "standalone",
-  "background_color": "#1a1a1a",
-  "theme_color": "#1a1a1a",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
   "icons": [
     {
       "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>▲</text></svg>",

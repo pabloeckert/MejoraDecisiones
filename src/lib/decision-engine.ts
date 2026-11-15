@@ -694,3 +694,283 @@ export function updateBayesianPriors(
   })
   return normalizeProbabilities(unnormalized)
 }
+
+// ============================================================================
+// 6. ANÁLISIS DE REVERSIBILIDAD & PRE-MORTEM (BEZOS / GARY KLEIN / TALEB)
+// ============================================================================
+
+export interface PreMortemAnalysisInput {
+  title: string
+  level: DecisionLevel
+  chosenAlternative: string
+  reversibility: 'reversible' | 'partially_reversible' | 'irreversible'
+  worstCaseScenario?: string
+  worstCaseLoss?: number
+  exitCostPct?: number // 0 a 100% costo estimado para retroceder
+  timeToExitMonths?: number
+  primaryRiskDriver?: string
+}
+
+export interface PreMortemAnalysisResult {
+  doorClassification:
+    | 'Puerta Tipo 1 (Irreversible / One-Way Door)'
+    | 'Puerta Tipo 2 (Reversible / Two-Way Door)'
+    | 'Híbrida (Puerta Tipo 1.5 con Piloto)'
+  velocityRule: string
+  failurePostMortemNarrative: string
+  failureVectors: { title: string; desc: string }[]
+  earlyCanarySignals: string[]
+  mitigationSafeguards: string[]
+  barbellPrescription: {
+    safeAllocationPct: number
+    asymmetricAllocationPct: number
+    narrative: string
+  }
+}
+
+export function analyzeReversibilityAndPreMortem(
+  input: PreMortemAnalysisInput
+): PreMortemAnalysisResult {
+  const exitCost = Math.max(0, Math.min(100, input.exitCostPct ?? (
+    input.reversibility === 'irreversible' ? 85 : input.reversibility === 'partially_reversible' ? 40 : 10
+  )))
+  const exitMonths = Math.max(1, input.timeToExitMonths ?? (
+    input.reversibility === 'irreversible' ? 12 : input.reversibility === 'partially_reversible' ? 4 : 1
+  ))
+  const driver = input.primaryRiskDriver || 'Volatilidad macro / caída de demanda'
+  const loss = input.worstCaseLoss !== undefined ? Math.abs(input.worstCaseLoss) : 50
+
+  const isType1 = input.reversibility === 'irreversible' || exitCost >= 60 || input.level === 'L4_MACRO'
+  const isType2 = input.reversibility === 'reversible' && exitCost <= 25 && input.level !== 'L4_MACRO'
+
+  const doorClassification = isType1
+    ? ('Puerta Tipo 1 (Irreversible / One-Way Door)' as const)
+    : isType2
+    ? ('Puerta Tipo 2 (Reversible / Two-Way Door)' as const)
+    : ('Híbrida (Puerta Tipo 1.5 con Piloto)' as const)
+
+  const velocityRule = isType1
+    ? 'Regla de Bezos: Decisión asimétrica de alto impacto. No delegar sin debate exhaustivo; exigir margen de seguridad alto, contrato de salida y consenso previo.'
+    : isType2
+    ? 'Regla de Bezos: La velocidad de decisión y aprendizaje supera el costo de equivocarse. Ejecutar de inmediato sin deliberación burocrática excesiva.'
+    : 'Estructurar como opción real: ejecutar un piloto acotado en tiempo y costo antes de comprometer el CAPEX o capital irreversible.'
+
+  const failurePostMortemNarrative = `Simulación retrospectiva (Gary Klein): Imagina que estamos en 12 meses en el futuro y la decisión '${input.title}' eligiendo '${input.chosenAlternative}' resultó en un colapso catastrófico. Las causas raíces no fueron azarosas, sino fallas de supuestos desatendidas tempranamente.`
+
+  const failureVectors = [
+    {
+      title: 'Vector 1: Ruptura de Supuesto Clave',
+      desc: `El factor '${driver}' experimentó una cola izquierda imprevista. El margen de ganancia proyectado se evaporó frente a una pérdida de hasta ${loss} unidades.`,
+    },
+    {
+      title: 'Vector 2: Fricción y Costo de Salida Irreversible',
+      desc: `Intentar abortar la alternativa tomó ${exitMonths} meses adicionales y consumió un ${exitCost}% de capital hundido en penalidades y costos operativos.`,
+    },
+    {
+      title: 'Vector 3: Falacia de Costos Hundidos y Ceguera de Reacción',
+      desc: 'El equipo insistió en duplicar la apuesta en lugar de activar el stop-loss en el mes 3 al detectar los primeros canarios.',
+    },
+  ]
+
+  const earlyCanarySignals = [
+    `Desviación > 15% en el primer hito mensual respecto al plan base.`,
+    `Tensión en la liquidez o caja operativa debido a sobrecostos imprevistos.`,
+    `Cambio de postura o deserción de la contraparte estratégica en los primeros 60 días.`,
+  ]
+
+  const mitigationSafeguards = [
+    `Fijar un Stop-Loss innegociable antes del lanzamiento (pérdida máxima tolerable: ${Math.round(loss * 0.6)} pts).`,
+    `Nombrar un 'Abogado del Diablo' con potestad de revisar el tablero cada 30 días.`,
+    `Particionar el compromiso en etapas (Stage-Gate): no liberar el tramo principal sin validar el piloto.`,
+  ]
+
+  const barbellPrescription = isType1
+    ? {
+        safeAllocationPct: 85,
+        asymmetricAllocationPct: 15,
+        narrative:
+          'Estrategia Barbell (Taleb): 85% de recursos en activos/operaciones hiper-seguros de supervivencia, 15% máximo expuesto a esta apuesta estructural.',
+      }
+    : isType2
+    ? {
+        safeAllocationPct: 70,
+        asymmetricAllocationPct: 30,
+        narrative:
+          'Estrategia Barbell (Taleb): 70% en el negocio/actividad núcleo, 30% en iteración rápida y experimentación agresiva.',
+      }
+    : {
+        safeAllocationPct: 80,
+        asymmetricAllocationPct: 20,
+        narrative:
+          'Estrategia Barbell (Taleb): 80% en resguardo seguro, 20% asignado al tramo piloto de validación.',
+      }
+
+  return {
+    doorClassification,
+    velocityRule,
+    failurePostMortemNarrative,
+    failureVectors,
+    earlyCanarySignals,
+    mitigationSafeguards,
+    barbellPrescription,
+  }
+}
+
+// ============================================================================
+// 7. EXPORTADORES UNIVERSALES (MARKDOWN EJECUTIVO Y BITÁCORA CSV)
+// ============================================================================
+
+export interface DecisionMarkdownSummaryData {
+  title: string
+  level: DecisionLevel
+  regionName: string
+  currency: string
+  chosenAlternative: string
+  expectedValue: number
+  maximinWald: string
+  minimaxRegret: string
+  evpi: number
+  mcProbabilityPositive: number
+  mcMedian: number
+  mcVaR95: number
+  kellyPct: number
+  topsisRankings: { rank: number; name: string; score: number }[]
+  preMortem: PreMortemAnalysisResult
+  lensesSummary: { lens: string; advice: string }[]
+  exportedAt?: string
+}
+
+export function generateDecisionMarkdownReport(data: DecisionMarkdownSummaryData): string {
+  const dateStr = data.exportedAt ?? new Date().toISOString()
+  const topsisRows = data.topsisRankings
+    .map((r) => `| #${r.rank} | ${r.name} | ${r.score}% |`)
+    .join('\n')
+
+  const lensesRows = data.lensesSummary
+    .map((l) => `- **${l.lens}:** ${l.advice}`)
+    .join('\n')
+
+  return `# Reporte Ejecutivo de Decisión · MejoraDecisiones OS
+
+> **Decisión:** ${data.title}  
+> **Nivel:** ${data.level} · **Región:** ${data.regionName} (${data.currency})  
+> **Generado:** ${dateStr} · **Esquema:** mejora.decision-os.v1
+
+---
+
+## 1. Veredicto y Métricas Clave
+
+| Métrica | Valor | Interpretación |
+| :--- | :--- | :--- |
+| **Alternativa Recomendada** | **${data.chosenAlternative}** | Consenso multicriterio |
+| **Valor Esperado (EV)** | ${data.expectedValue.toFixed(1)} | Ponderación Bayes-Laplace |
+| **Supervivencia Wald (Maximin)** | ${data.maximinWald} | Piso en el peor escenario posible |
+| **Mínimo Arrepentimiento (Savage)** | ${data.minimaxRegret} | Minimizador de dolor ex-post |
+| **EVPI (Valor Información Perfecta)** | ${data.evpi.toFixed(1)} | Presupuesto máximo para investigar |
+| **Probabilidad de Éxito Monte Carlo** | ${data.mcProbabilityPositive.toFixed(1)}% | 3.000 iteraciones estocásticas PERT |
+| **Mediana P50** | ${data.mcMedian.toFixed(1)} | Resultado más probable |
+| **VaR 95% (Pérdida en Cola)** | ${data.mcVaR95.toFixed(1)} | Riesgo extremo con 95% de confianza |
+| **Asignación Half-Kelly** | ${data.kellyPct}% | Exposición recomendada de recursos |
+
+---
+
+## 2. Clasificación de Reversibilidad (Bezos) & Pre-Mortem (Gary Klein)
+
+- **Tipo de Decisión:** **${data.preMortem.doorClassification}**
+- **Regla de Velocidad:** ${data.preMortem.velocityRule}
+- **Asignación Barbell (Taleb):** ${data.preMortem.barbellPrescription.narrative}
+
+### Simulación de Falla Previa
+${data.preMortem.failurePostMortemNarrative}
+
+### Canarios Tempranos (Stop-Loss)
+${data.preMortem.earlyCanarySignals.map((s) => `1. ${s}`).join('\n')}
+
+### Salvaguardas Mandatorias
+${data.preMortem.mitigationSafeguards.map((s) => `- ${s}`).join('\n')}
+
+---
+
+## 3. Ranking Multicriterio TOPSIS
+
+| Posición | Alternativa | Score de Cercanía |
+| :---: | :--- | :---: |
+${topsisRows}
+
+---
+
+## 4. Triangulación del Consejo de 4 Lentes
+
+${lensesRows}
+
+---
+*Generado automáticamente por MejoraDecisiones OS — Sistema Operativo Autónomo de Decisiones.*
+`
+}
+
+export interface DecisionJournalCsvEntry {
+  id: string
+  createdAt: string
+  level: DecisionLevel
+  region: string
+  title: string
+  chosenAlternative: string
+  consensusAlternative: string
+  minimaxRegretAlternative?: string
+  expectedValue: number
+  maxRegret: number
+  confidencePct: number
+  reversibility: string
+  outcomeStatus?: 'pending' | 'success' | 'partial' | 'failed'
+  actualOutcomeScore?: number
+  notes: string
+}
+
+function escapeCsvCell(cell: string | number | undefined | null): string {
+  if (cell === undefined || cell === null) return '""'
+  const str = String(cell)
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return `"${str}"`
+}
+
+export function generateDecisionJournalCsv(entries: DecisionJournalCsvEntry[]): string {
+  const headers = [
+    'id',
+    'created_at',
+    'level',
+    'region',
+    'title',
+    'chosen_alternative',
+    'consensus_alternative',
+    'expected_value',
+    'max_regret',
+    'confidence_pct',
+    'reversibility',
+    'outcome_status',
+    'actual_outcome_score',
+    'notes',
+  ]
+
+  const rows = entries.map((e) => {
+    return [
+      escapeCsvCell(e.id),
+      escapeCsvCell(e.createdAt),
+      escapeCsvCell(e.level),
+      escapeCsvCell(e.region),
+      escapeCsvCell(e.title),
+      escapeCsvCell(e.chosenAlternative),
+      escapeCsvCell(e.consensusAlternative),
+      escapeCsvCell(e.expectedValue),
+      escapeCsvCell(e.maxRegret),
+      escapeCsvCell(e.confidencePct),
+      escapeCsvCell(e.reversibility),
+      escapeCsvCell(e.outcomeStatus || 'pending'),
+      escapeCsvCell(e.actualOutcomeScore !== undefined ? e.actualOutcomeScore : ''),
+      escapeCsvCell(e.notes),
+    ].join(',')
+  })
+
+  return [headers.join(','), ...rows].join('\r\n')
+}

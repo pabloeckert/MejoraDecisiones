@@ -8,6 +8,9 @@ import {
   evaluateTOPSIS,
   computeKellyFraction,
   updateBayesianPriors,
+  analyzeReversibilityAndPreMortem,
+  generateDecisionMarkdownReport,
+  generateDecisionJournalCsv,
 } from '../lib/decision-engine'
 import {
   REGIONAL_CONTEXT_PACKS,
@@ -242,5 +245,87 @@ describe('Federation Bridge & Multi-Network 4D Power Graph', () => {
     expect(invalid.level).toBeUndefined()
     expect(invalid.region).toBeUndefined()
     expect(invalid.alternatives).toBeUndefined()
+  })
+
+  it('clasifica reversibilidad (Puertas Tipo 1 vs Tipo 2 de Bezos) y genera auditoría Pre-Mortem', () => {
+    const type1 = analyzeReversibilityAndPreMortem({
+      title: 'Fusión Empresarial Internacional',
+      level: 'L3_EMPRESA',
+      chosenAlternative: 'Comprar competidor en Brasil',
+      reversibility: 'irreversible',
+      worstCaseScenario: 'Crisis cambiaria y litigio regulatorio',
+      worstCaseLoss: -75,
+      exitCostPct: 80,
+      timeToExitMonths: 18,
+    })
+    expect(type1.doorClassification).toBe('Puerta Tipo 1 (Irreversible / One-Way Door)')
+    expect(type1.barbellPrescription.safeAllocationPct).toBe(85)
+    expect(type1.failureVectors).toHaveLength(3)
+    expect(type1.earlyCanarySignals.length).toBeGreaterThanOrEqual(3)
+
+    const type2 = analyzeReversibilityAndPreMortem({
+      title: 'Test A/B de Precios en Web',
+      level: 'L1_COTIDIANO',
+      chosenAlternative: 'Precio dinámico',
+      reversibility: 'reversible',
+      exitCostPct: 5,
+    })
+    expect(type2.doorClassification).toBe('Puerta Tipo 2 (Reversible / Two-Way Door)')
+    expect(type2.velocityRule).toContain('velocidad')
+    expect(type2.barbellPrescription.asymmetricAllocationPct).toBe(30)
+  })
+
+  it('genera reportes ejecutivos Markdown y exportación CSV de la bitácora', () => {
+    const preMortem = analyzeReversibilityAndPreMortem({
+      title: 'Inversión Planta',
+      level: 'L3_EMPRESA',
+      chosenAlternative: 'Construir nave industrial',
+      reversibility: 'irreversible',
+    })
+
+    const md = generateDecisionMarkdownReport({
+      title: 'Inversión Planta',
+      level: 'L3_EMPRESA',
+      regionName: 'Argentina',
+      currency: 'ARS',
+      chosenAlternative: 'Construir nave industrial',
+      expectedValue: 64.5,
+      maximinWald: 'Opción A',
+      minimaxRegret: 'Opción B',
+      evpi: 14.2,
+      mcProbabilityPositive: 78.4,
+      mcMedian: 62.0,
+      mcVaR95: -18.5,
+      kellyPct: 18.5,
+      topsisRankings: [{ rank: 1, name: 'Construir nave', score: 88.2 }],
+      preMortem,
+      lensesSummary: [{ lens: 'Maquiavelo', advice: 'Alinear intereses de socios' }],
+    })
+    expect(md).toContain('# Reporte Ejecutivo de Decisión · MejoraDecisiones OS')
+    expect(md).toContain('Puerta Tipo 1')
+    expect(md).toContain('Valor Esperado (EV)')
+
+    const csv = generateDecisionJournalCsv([
+      {
+        id: 'dec-1',
+        createdAt: '2026-05-14T12:00:00.000Z',
+        level: 'L3_EMPRESA',
+        region: 'AR',
+        title: 'Expansión Planta, Fábrica',
+        chosenAlternative: 'Nave Sur',
+        consensusAlternative: 'Nave Sur',
+        expectedValue: 50.2,
+        maxRegret: 12.0,
+        confidencePct: 80,
+        reversibility: 'irreversible',
+        outcomeStatus: 'success',
+        actualOutcomeScore: 55.4,
+        notes: 'Nota con "comillas" y comas, test',
+      },
+    ])
+    expect(csv).toContain('id,created_at,level,region,title')
+    expect(csv).toContain('dec-1')
+    expect(csv).toContain('"Expansión Planta, Fábrica"')
+    expect(csv).toContain('"Nota con ""comillas"" y comas, test"')
   })
 })

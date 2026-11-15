@@ -15,6 +15,9 @@ import {
   solveSequentialGame,
   evaluateTOPSIS,
   computeKellyFraction,
+  analyzeReversibilityAndPreMortem,
+  generateDecisionMarkdownReport,
+  generateDecisionJournalCsv,
   type DecisionLevel,
   type MonteCarloFactor,
   type SequentialGameBranch,
@@ -151,6 +154,7 @@ export default function DecisionesPage() {
   const [confidenceInput, setConfidenceInput] = useState<number>(75)
   const [journalNote, setJournalNote] = useState<string>('')
   const [copiedShareUrl, setCopiedShareUrl] = useState<boolean>(false)
+  const [copiedMarkdown, setCopiedMarkdown] = useState<boolean>(false)
 
   // Bloque 1: Importador Federado, Wizard Guiado 60s y Reporte Ejecutivo PDF
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -326,6 +330,115 @@ export default function DecisionesPage() {
     navigator.clipboard?.writeText(url).catch(() => {})
     setCopiedShareUrl(true)
     setTimeout(() => setCopiedShareUrl(false), 2500)
+  }
+
+  const preMortemAnalysis = useMemo(() => {
+    const pick = uncertaintyResult.recommendations.consensusPick
+    const worstLoss = pick?.minPayoff ?? -40
+    return analyzeReversibilityAndPreMortem({
+      title: decisionTitle,
+      level: activeLevel,
+      chosenAlternative: pick?.name ?? alternatives[0] ?? 'Alternativa Principal',
+      reversibility,
+      worstCaseScenario: scenarios[0] ?? 'Escenario Adverso',
+      worstCaseLoss: worstLoss,
+      exitCostPct:
+        reversibility === 'irreversible' ? 85 : reversibility === 'partially_reversible' ? 40 : 15,
+      timeToExitMonths:
+        reversibility === 'irreversible' ? 12 : reversibility === 'partially_reversible' ? 4 : 1,
+      primaryRiskDriver: mcResult.sensitivity[0]?.name ?? 'Volatilidad Macro',
+    })
+  }, [
+    decisionTitle,
+    activeLevel,
+    uncertaintyResult,
+    alternatives,
+    reversibility,
+    scenarios,
+    mcResult.sensitivity,
+  ])
+
+  const handleCopyMarkdown = () => {
+    const pick = uncertaintyResult.recommendations.consensusPick
+    const md = generateDecisionMarkdownReport({
+      title: decisionTitle,
+      level: activeLevel,
+      regionName: regionPack.name,
+      currency: regionPack.currency,
+      chosenAlternative: pick?.name ?? alternatives[0] ?? 'N/A',
+      expectedValue: pick?.expectedValue ?? 0,
+      maximinWald: uncertaintyResult.recommendations.maximinWaldBest?.name ?? 'N/A',
+      minimaxRegret:
+        uncertaintyResult.recommendations.minimaxRegretSavageBest?.name ?? 'N/A',
+      evpi: uncertaintyResult.evpi.evpi,
+      mcProbabilityPositive: mcResult.probabilityPositive,
+      mcMedian: mcResult.median,
+      mcVaR95: mcResult.valueAtRisk95,
+      kellyPct: kellyResult.safeKellyPct,
+      topsisRankings: topsisResult.map((t, idx) => ({
+        rank: idx + 1,
+        name: t.name,
+        score: t.closenessScorePct,
+      })),
+      preMortem: preMortemAnalysis,
+      lensesSummary: multiVisionLenses.map((l) => ({
+        lens: `${l.icon} ${l.title}`,
+        advice: l.tacticalPrescription,
+      })),
+    })
+    navigator.clipboard?.writeText(md).catch(() => {})
+    setCopiedMarkdown(true)
+    setTimeout(() => setCopiedMarkdown(false), 2500)
+  }
+
+  const handleDownloadMarkdown = () => {
+    const pick = uncertaintyResult.recommendations.consensusPick
+    const md = generateDecisionMarkdownReport({
+      title: decisionTitle,
+      level: activeLevel,
+      regionName: regionPack.name,
+      currency: regionPack.currency,
+      chosenAlternative: pick?.name ?? alternatives[0] ?? 'N/A',
+      expectedValue: pick?.expectedValue ?? 0,
+      maximinWald: uncertaintyResult.recommendations.maximinWaldBest?.name ?? 'N/A',
+      minimaxRegret:
+        uncertaintyResult.recommendations.minimaxRegretSavageBest?.name ?? 'N/A',
+      evpi: uncertaintyResult.evpi.evpi,
+      mcProbabilityPositive: mcResult.probabilityPositive,
+      mcMedian: mcResult.median,
+      mcVaR95: mcResult.valueAtRisk95,
+      kellyPct: kellyResult.safeKellyPct,
+      topsisRankings: topsisResult.map((t, idx) => ({
+        rank: idx + 1,
+        name: t.name,
+        score: t.closenessScorePct,
+      })),
+      preMortem: preMortemAnalysis,
+      lensesSummary: multiVisionLenses.map((l) => ({
+        lens: `${l.icon} ${l.title}`,
+        advice: l.tacticalPrescription,
+      })),
+    })
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `decision-${activeLevel.toLowerCase()}-${decisionTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportJournalCsv = () => {
+    const csv = generateDecisionJournalCsv(journal)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bitacora-decisiones-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const resultsSectionRef = useRef<HTMLDivElement | null>(null)
@@ -662,6 +775,20 @@ export default function DecisionesPage() {
                 className="px-3 h-7 rounded border border-border text-[10px] font-display text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
               >
                 {copiedShareUrl ? '✓ Enlace copiado' : '🔗 Compartir Escenario'}
+              </button>
+              <button
+                onClick={handleCopyMarkdown}
+                className="px-3 h-7 rounded border border-border text-[10px] font-display text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+                title="Copiar reporte completo en formato Markdown para Obsidian, Notion o actas"
+              >
+                {copiedMarkdown ? '✓ MD Copiado' : '📋 Copiar Markdown'}
+              </button>
+              <button
+                onClick={handleDownloadMarkdown}
+                className="px-3 h-7 rounded border border-border text-[10px] font-display text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+                title="Descargar decisión estructurada como archivo .md"
+              >
+                ⬇ Descargar .md
               </button>
               <input
                 ref={fileInputRef}
@@ -1881,11 +2008,133 @@ export default function DecisionesPage() {
         </div>
       </div>
 
-      {/* BITÁCORA DE DECISIONES (DECISION JOURNAL) + CALIBRACIÓN BRIER SCORE */}
+      {/* 4. AUDITOR PRE-MORTEM & REVERSIBILIDAD (BEZOS / GARY KLEIN / TALEB) */}
+      <div className="bg-card border border-border/60 rounded-lg p-5 space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-display text-xs uppercase tracking-wider text-primary font-semibold">
+                4. Auditor Pre-Mortem &amp; Reversibilidad (Bezos · Klein · Taleb)
+              </span>
+              <span
+                className={`text-[10px] font-display px-2 py-0.5 rounded border font-semibold ${
+                  preMortemAnalysis.doorClassification.includes('Tipo 1')
+                    ? 'border-signal-enemy/40 bg-signal-enemy/10 text-signal-enemy'
+                    : preMortemAnalysis.doorClassification.includes('Tipo 2')
+                    ? 'border-signal-ally/40 bg-signal-ally/10 text-signal-ally'
+                    : 'border-amber-400/40 bg-amber-400/10 text-amber-300'
+                }`}
+              >
+                {preMortemAnalysis.doorClassification}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Asume el colapso total en 12 meses para descubrir los vectores ciegos antes de comprometer capital o reputación.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-display">
+            <span className="text-muted-foreground">Velocidad:</span>
+            <span className="font-semibold text-foreground">{preMortemAnalysis.velocityRule}</span>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="p-4 rounded-md border border-border/50 bg-background/50 space-y-2">
+            <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground font-semibold">
+              Simulación de Fracaso Proyectado (Gary Klein)
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {preMortemAnalysis.failurePostMortemNarrative}
+            </p>
+            <div className="pt-2 border-t border-border/40 space-y-1.5">
+              {preMortemAnalysis.failureVectors.map((v, i) => (
+                <div key={i} className="text-[11px] text-muted-foreground">
+                  <strong className="text-foreground font-display">{v.title}:</strong> {v.desc}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-md border border-border/50 bg-background/50 space-y-2">
+            <div className="text-[10px] font-display uppercase tracking-wider text-amber-400 font-semibold">
+              Canarios Tempranos en la Mina (Stop-Loss)
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Señales que indican que el supuesto está roto en los primeros 30 a 60 días:
+            </p>
+            <ul className="space-y-1.5 pt-1 text-[11px] text-muted-foreground">
+              {preMortemAnalysis.earlyCanarySignals.map((sig, i) => (
+                <li key={i} className="flex items-start gap-1.5">
+                  <span className="text-amber-400 font-bold">⚠</span>
+                  <span>{sig}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="pt-2 border-t border-border/40">
+              <div className="text-[10px] font-display uppercase tracking-wider text-signal-ally font-semibold mb-1">
+                Salvaguardas Previas
+              </div>
+              <ul className="space-y-1 text-[11px] text-muted-foreground">
+                {preMortemAnalysis.mitigationSafeguards.map((saf, i) => (
+                  <li key={i} className="flex items-start gap-1.5">
+                    <span className="text-signal-ally font-bold">✓</span>
+                    <span>{saf}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-md border border-border/50 bg-background/50 space-y-3 flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="text-[10px] font-display uppercase tracking-wider text-primary font-semibold">
+                Estrategia Barbell de Taleb (Pesas Antifrágil)
+              </div>
+              <div className="p-3 rounded border border-border/60 bg-card text-xs text-muted-foreground leading-snug">
+                {preMortemAnalysis.barbellPrescription.narrative}
+              </div>
+              <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between text-[11px] font-display">
+                  <span>Base Hiper-Segura (Supervivencia):</span>
+                  <span className="font-bold text-signal-ally">
+                    {preMortemAnalysis.barbellPrescription.safeAllocationPct}%
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-signal-ally"
+                    style={{
+                      width: `${preMortemAnalysis.barbellPrescription.safeAllocationPct}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-[11px] font-display pt-1">
+                  <span>Exposición Asimétrica Máxima:</span>
+                  <span className="font-bold text-primary">
+                    {preMortemAnalysis.barbellPrescription.asymmetricAllocationPct}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={handleCopyMarkdown}
+                className="w-full h-8 rounded border border-border bg-card text-[11px] font-display text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                {copiedMarkdown ? '✓ Markdown Copiado' : '📋 Copiar Auditoría'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. BITÁCORA DE DECISIONES (DECISION JOURNAL) + CALIBRACIÓN BRIER SCORE */}
       <div className="grid lg:grid-cols-[380px_1fr] gap-6 pt-4 border-t border-border/60">
         <div className="bg-card border border-border/60 rounded-lg p-5 space-y-4">
           <div className="font-display text-xs uppercase tracking-wider text-primary font-semibold">
-            4. Registrar en Bitácora de Decisiones
+            5. Registrar en Bitácora de Decisiones
           </div>
           <p className="text-xs text-muted-foreground">
             Guardá la decisión tomada hoy junto con tu nivel de confianza para auditar tus predicciones y medir tu Brier Score.
@@ -1939,18 +2188,30 @@ export default function DecisionesPage() {
         </div>
 
         <div className="bg-card border border-border/60 rounded-lg p-5 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="font-display text-xs uppercase tracking-wider text-muted-foreground font-semibold">
               Historial Auditable ({journal.length} decisiones registradas)
             </div>
-            <a
-              href={buildDiagnostico4DFederatedUrl('decision_journal')}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] font-display text-primary hover:underline font-semibold"
-            >
-              Conectar con Diagnóstico 4D Empresarial →
-            </a>
+            <div className="flex items-center gap-2">
+              {journal.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleExportJournalCsv}
+                  className="px-2.5 h-7 rounded border border-border text-[10px] font-display text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+                  title="Descargar la bitácora completa en formato CSV para Excel o Python"
+                >
+                  ⬇ Exportar Bitácora CSV
+                </button>
+              )}
+              <a
+                href={buildDiagnostico4DFederatedUrl('decision_journal')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-display text-primary hover:underline font-semibold"
+              >
+                Conectar con Diagnóstico 4D Empresarial →
+              </a>
+            </div>
           </div>
 
           {journal.length === 0 ? (
@@ -2299,6 +2560,37 @@ export default function DecisionesPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Sección 5: Clasificación de Reversibilidad (Bezos) & Pre-Mortem (Gary Klein) */}
+            <div className="space-y-2 border-t border-slate-200 pt-2">
+              <h3 className="text-xs font-display uppercase tracking-wider font-bold text-slate-800 pb-1">
+                5. Clasificación de Reversibilidad &amp; Auditoría Pre-Mortem (Gary Klein)
+              </h3>
+              <div className="grid md:grid-cols-2 gap-3 text-xs">
+                <div className="p-2.5 rounded bg-slate-50 border border-slate-200 space-y-1">
+                  <div>
+                    <strong>Tipo de Puerta:</strong>{' '}
+                    <span className="font-semibold text-slate-900">
+                      {preMortemAnalysis.doorClassification}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600">{preMortemAnalysis.velocityRule}</p>
+                  <div className="text-[11px] text-slate-700 pt-1 border-t border-slate-200">
+                    <strong>Asignación Barbell (Taleb):</strong>{' '}
+                    {preMortemAnalysis.barbellPrescription.safeAllocationPct}% Seguro /{' '}
+                    {preMortemAnalysis.barbellPrescription.asymmetricAllocationPct}% Asimétrico
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-slate-50 border border-slate-200 space-y-1 text-[11px]">
+                  <div className="font-bold text-slate-800">Canarios Tempranos (Stop-Loss):</div>
+                  <ul className="list-disc list-inside text-slate-600 space-y-0.5">
+                    {preMortemAnalysis.earlyCanarySignals.map((sig, idx) => (
+                      <li key={idx}>{sig}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
