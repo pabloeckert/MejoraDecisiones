@@ -1,5 +1,26 @@
 # Changelog — Tablero Nash / MejoraDecisiones
 
+## v5.9.0 — 2026-11-16 (Bloque 7: Simulación Avanzada 2027, Stress-Test Cruzado 2D, Correlación Monte Carlo y Plantillas Multi-Escala)
+
+### Added
+- **Motor de Stress-Test Cruzado 2D y Heatmap de Robustez (`src/lib/decision-engine.ts`, `src/pages/Decisiones.tsx`):**
+  - Implementada función matemática pura `evaluateCrossImpactGrid(variableX, variableY, alternatives)` que proyecta 25 cuadrantes ($5 \times 5$) de shocks macroeconómicos y operativos simultáneos (ej. Inflación vs Brecha o Tasas vs Demanda).
+  - Calcula la alternativa dominante por celda, el margen de victoria relativo, el índice de fragilidad extrema de cola (`stressFragilityIndex` de 0 a 100) y la alternativa más robusta en todo el espectro de tensión.
+  - Nuevo panel visual interactivo tipo Mapa de Calor en `/decisiones` (`03 · Stress-Test Cruzado 2D`) con tarjetas de dominio porcentual y tabla de matriz coloreada.
+- **Correlación Sistémica en Simulación de Monte Carlo (`src/lib/decision-engine.ts`, `src/pages/Decisiones.tsx`):**
+  - Agregado parámetro de acoplamiento estocástico $\rho \in [-0.8, 0.8]$ en `runMonteCarloSimulation` mediante factor común y mezcla uniforme sin alterar la reproducibilidad de la semilla fija cuando $\rho = 0$.
+  - Selector de régimen en `/decisiones`: `Normal (ρ = 0)`, `Crisis Sistémica (ρ = +0.6)` (riesgos se alinean y aumentan las pérdidas extremas en cola VaR95) y `Cobertura Antifrágil (ρ = -0.4)`.
+- **Biblioteca Enriquecida de 6 Sub-Plantillas L1 y L2 (`src/lib/context-packs.ts`, `src/pages/Decisiones.tsx`):**
+  - Sumadas 6 plantillas de decisión hiper-frecuentes listas en 1 clic:
+    - `L1`: Negociación de precios con clientes difíciles, Compra de activo vs Leasing/Tercerización, Resolución de desacuerdos societarios o de equipo.
+    - `L2`: Carrera ejecutiva vs Emprendimiento propio, Relocalización internacional vs Trabajo remoto multimoneda, Distribución de patrimonio personal y reservas (Estrategia Barbell).
+  - Selector dinámico de sub-plantillas por nivel fractal en `/decisiones`.
+- **Internacionalización Completa y Presets de Escenarios (`src/pages/Escenarios.tsx`):**
+  - Selector regional integrado (`GLOBAL`, `AR`, `US`, `BR`, `MX`, `EU`) con sliders adaptados automáticamente en rangos, unidades y etiquetas.
+  - Eliminación total de `window.prompt()` reemplazado por formulario modal inline con persistencia en `localStorage` (`mejora_scenario_presets_v1`) y eliminación selectiva.
+- **Tests Unitarios de Simulación (`src/__tests__/decision-engine.test.ts`):**
+  - 2 nuevos tests verificando la grilla 5x5 de `evaluateCrossImpactGrid` y el incremento de dispersión en colas con $\rho > 0$ en Monte Carlo (**77 tests totales pasando**).
+
 ## v5.8.0 — 2026-11-16 (Bloque 6: Datos Reales en Vivo, Riesgo País, GDELT Live OSINT, CI/CD y Calibración 2026-2027)
 
 ### Added

@@ -450,17 +450,17 @@ function createSeededRandom(seed = 42): () => number {
   }
 }
 
-function sampleTriangular(min: number, mode: number, max: number, rng: () => number): number {
+function sampleTriangularFromU(min: number, mode: number, max: number, u: number): number {
   const lo = Math.min(min, max)
   const hi = Math.max(min, max)
   const m = Math.max(lo, Math.min(hi, mode))
   if (hi === lo) return lo
-  const u = rng()
+  const clampedU = Math.max(0.000001, Math.min(0.999999, u))
   const fc = (m - lo) / (hi - lo)
-  if (u < fc) {
-    return lo + Math.sqrt(u * (hi - lo) * (m - lo))
+  if (clampedU < fc) {
+    return lo + Math.sqrt(clampedU * (hi - lo) * (m - lo))
   }
-  return hi - Math.sqrt((1 - u) * (hi - lo) * (hi - m))
+  return hi - Math.sqrt((1 - clampedU) * (hi - lo) * (hi - m))
 }
 
 export function runMonteCarloSimulation(
@@ -468,16 +468,24 @@ export function runMonteCarloSimulation(
   factors: MonteCarloFactor[],
   targetThreshold = 0,
   iterations = 3000,
-  seed = 1337
+  seed = 1337,
+  systemicCorrelation = 0
 ): MonteCarloResult {
   const rng = createSeededRandom(seed)
   const outcomes: number[] = new Array(iterations)
+  const clampedRho = Math.max(-0.8, Math.min(0.8, systemicCorrelation))
+  const absRho = Math.abs(clampedRho)
 
   for (let iter = 0; iter < iterations; iter++) {
     let val = baseOutcome
+    const commonU = absRho > 0 ? rng() : 0
     for (let f = 0; f < factors.length; f++) {
       const factor = factors[f]
-      const sample = sampleTriangular(factor.min, factor.mode, factor.max, rng)
+      const u =
+        absRho > 0
+          ? (1 - absRho) * rng() + absRho * (clampedRho >= 0 ? commonU : 1 - commonU)
+          : rng()
+      const sample = sampleTriangularFromU(factor.min, factor.mode, factor.max, u)
       const deltaFromMode = sample - factor.mode
       val += deltaFromMode * factor.weight
     }
@@ -974,3 +982,270 @@ export function generateDecisionJournalCsv(entries: DecisionJournalCsvEntry[]): 
 
   return [headers.join(','), ...rows].join('\r\n')
 }
+
+// --- Stress-Test Cruzado 2D / Heatmap de Robustez (Bloque 7) ---
+
+export interface CrossImpactVariable {
+  id: string
+  name: string
+  unit: string
+  baseline: number
+  levels: number[] // exactamente 5 niveles ordenados
+  labels?: string[]
+}
+
+export interface CrossImpactAlternative {
+  id: string
+  name: string
+  basePayoff: number
+  sensitivityX: number // delta payoff por unidad de variable X respecto al baseline
+  sensitivityY: number // delta payoff por unidad de variable Y respecto al baseline
+  interactionXY?: number // término de choque compuesto (cuando ambos shocks ocurren a la vez)
+}
+
+export interface CrossImpactCell {
+  xIndex: number
+  yIndex: number
+  xValue: number
+  yValue: number
+  payoffs: Record<string, number>
+  winningAlternativeId: string
+  winningAlternativeName: string
+  winningMargin: number
+}
+
+export interface CrossImpactRobustnessScore {
+  alternativeId: string
+  alternativeName: string
+  cellsWon: number
+  winPct: number
+  avgPayoff: number
+  minPayoff: number
+}
+
+export interface CrossImpactGridResult {
+  variableX: CrossImpactVariable
+  variableY: CrossImpactVariable
+  grid: CrossImpactCell[][] // 5 filas (Y) x 5 columnas (X)
+  robustnessScores: CrossImpactRobustnessScore[]
+  recommendedAlternativeId: string
+  stressFragilityIndex: number // 0 a 100
+}
+
+export function evaluateCrossImpactGrid(
+  variableX: CrossImpactVariable,
+  variableY: CrossImpactVariable,
+  alternatives: CrossImpactAlternative[]
+): CrossImpactGridResult {
+  if (alternatives.length === 0) {
+    throw new Error('evaluateCrossImpactGrid requiere al menos una alternativa')
+  }
+
+  const grid: CrossImpactCell[][] = []
+  const winCounts: Record<string, number> = {}
+  const payoffSums: Record<string, number> = {}
+  const minPayoffs: Record<string, number> = {}
+
+  alternatives.forEach((a) => {
+    winCounts[a.id] = 0
+    payoffSums[a.id] = 0
+    minPayoffs[a.id] = Infinity
+  })
+
+  for (let yIdx = 0; yIdx < variableY.levels.length; yIdx++) {
+    const row: CrossImpactCell[] = []
+    const yVal = variableY.levels[yIdx]
+    const deltaY = yVal - variableY.baseline
+
+    for (let xIdx = 0; xIdx < variableX.levels.length; xIdx++) {
+      const xVal = variableX.levels[xIdx]
+      const deltaX = xVal - variableX.baseline
+
+      const cellPayoffs: Record<string, number> = {}
+      let bestAlt = alternatives[0]
+      let bestVal = -Infinity
+      let secondBestVal = -Infinity
+
+      alternatives.forEach((alt) => {
+        const interaction = alt.interactionXY ?? 0
+        const payoff = Number(
+          (
+            alt.basePayoff +
+            alt.sensitivityX * deltaX +
+            alt.sensitivityY * deltaY +
+            interaction * deltaX * deltaY
+          ).toFixed(1)
+        )
+        cellPayoffs[alt.id] = payoff
+        payoffSums[alt.id] += payoff
+        if (payoff < minPayoffs[alt.id]) {
+          minPayoffs[alt.id] = payoff
+        }
+
+        if (payoff > bestVal) {
+          secondBestVal = bestVal
+          bestVal = payoff
+          bestAlt = alt
+        } else if (payoff > secondBestVal) {
+          secondBestVal = payoff
+        }
+      })
+
+      winCounts[bestAlt.id] = (winCounts[bestAlt.id] ?? 0) + 1
+      const winningMargin =
+        secondBestVal === -Infinity ? 0 : Number((bestVal - secondBestVal).toFixed(1))
+
+      row.push({
+        xIndex: xIdx,
+        yIndex: yIdx,
+        xValue: xVal,
+        yValue: yVal,
+        payoffs: cellPayoffs,
+        winningAlternativeId: bestAlt.id,
+        winningAlternativeName: bestAlt.name,
+        winningMargin,
+      })
+    }
+    grid.push(row)
+  }
+
+  const totalCells = variableX.levels.length * variableY.levels.length || 1
+  const robustnessScores: CrossImpactRobustnessScore[] = alternatives
+    .map((alt) => ({
+      alternativeId: alt.id,
+      alternativeName: alt.name,
+      cellsWon: winCounts[alt.id] ?? 0,
+      winPct: Number((((winCounts[alt.id] ?? 0) / totalCells) * 100).toFixed(1)),
+      avgPayoff: Number(((payoffSums[alt.id] ?? 0) / totalCells).toFixed(1)),
+      minPayoff: minPayoffs[alt.id] === Infinity ? 0 : minPayoffs[alt.id],
+    }))
+    .sort((a, b) => b.winPct - a.winPct || b.avgPayoff - a.avgPayoff)
+
+  const recommendedAlternativeId = robustnessScores[0]?.alternativeId ?? alternatives[0].id
+
+  const bestScore = robustnessScores[0]
+  const stressFragilityIndex = bestScore
+    ? Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round(
+            ((bestScore.avgPayoff - bestScore.minPayoff) / (Math.abs(bestScore.avgPayoff) + 1)) * 50
+          )
+        )
+      )
+    : 0
+
+  return {
+    variableX,
+    variableY,
+    grid,
+    robustnessScores,
+    recommendedAlternativeId,
+    stressFragilityIndex,
+  }
+}
+
+export function buildDefaultCrossImpactModel(
+  alternatives: { id: string; name: string }[],
+  regionCode = 'AR'
+): {
+  variableX: CrossImpactVariable
+  variableY: CrossImpactVariable
+  alternatives: CrossImpactAlternative[]
+} {
+  const isArg = regionCode === 'AR'
+  const variableX: CrossImpactVariable = isArg
+    ? {
+        id: 'inflacion',
+        name: 'Inflación Mensual',
+        unit: '%',
+        baseline: 2.3,
+        levels: [1.5, 2.0, 2.5, 3.5, 5.0],
+        labels: [
+          'Deflacionaria (1.5%)',
+          'Meta Base (2.0%)',
+          'Piso Actual (2.5%)',
+          'Rebote (3.5%)',
+          'Crisis (5.0%)',
+        ],
+      }
+    : {
+        id: 'tasas',
+        name: 'Tasa Interés Referencia',
+        unit: '%',
+        baseline: 4.5,
+        levels: [3.5, 4.0, 4.5, 5.25, 6.0],
+        labels: [
+          'Flexibilización (3.5%)',
+          'Baja Moderada (4.0%)',
+          'Base (4.5%)',
+          'Higher-for-Longer (5.25%)',
+          'Apretón Fuerte (6.0%)',
+        ],
+      }
+
+  const variableY: CrossImpactVariable = isArg
+    ? {
+        id: 'brecha',
+        name: 'Brecha Cambiaria',
+        unit: '%',
+        baseline: 10,
+        levels: [2, 8, 15, 30, 50],
+        labels: [
+          'Casi Nula (2%)',
+          'Convergencia (8%)',
+          'Alerta (15%)',
+          'Tensión Fuerte (30%)',
+          'Estrés Extremo (50%)',
+        ],
+      }
+    : {
+        id: 'demanda',
+        name: 'Crecimiento PIB / Demanda',
+        unit: '%',
+        baseline: 2.5,
+        levels: [-1.5, 0.5, 2.0, 3.5, 5.0],
+        labels: [
+          'Recesión (-1.5%)',
+          'Estancamiento (0.5%)',
+          'Moderado (2.0%)',
+          'Expansión (3.5%)',
+          'Boom (5.0%)',
+        ],
+      }
+
+  const crossAlternatives: CrossImpactAlternative[] = alternatives.map((alt, idx) => {
+    if (idx === 0) {
+      return {
+        id: alt.id,
+        name: alt.name,
+        basePayoff: 65,
+        sensitivityX: -1.8,
+        sensitivityY: 1.2,
+        interactionXY: -0.05,
+      }
+    }
+    if (idx === 1) {
+      return {
+        id: alt.id,
+        name: alt.name,
+        basePayoff: 75,
+        sensitivityX: -4.5,
+        sensitivityY: -2.0,
+        interactionXY: -0.15,
+      }
+    }
+    return {
+      id: alt.id,
+      name: alt.name,
+      basePayoff: 70,
+      sensitivityX: -2.5,
+      sensitivityY: -0.5,
+      interactionXY: -0.08,
+    }
+  })
+
+  return { variableX, variableY, alternatives: crossAlternatives }
+}
+

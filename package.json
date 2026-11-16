@@ -1,7 +1,7 @@
 {
   "name": "mejora-decisiones-os",
   "private": true,
-  "version": "5.8.0",
+  "version": "5.9.0",
   "type": "module",
   "description": "Dashboard analítico sobre poder, alianzas y escenarios políticos en Argentina, construido con teoría de juegos.",
   "scripts": {

@@ -11,6 +11,8 @@ import {
   analyzeReversibilityAndPreMortem,
   generateDecisionMarkdownReport,
   generateDecisionJournalCsv,
+  evaluateCrossImpactGrid,
+  buildDefaultCrossImpactModel,
 } from '../lib/decision-engine'
 import {
   REGIONAL_CONTEXT_PACKS,
@@ -177,7 +179,12 @@ describe('Context Packs Internacionales y Consejo de 4 Lentes', () => {
     expect(Object.keys(REGIONAL_CONTEXT_PACKS)).toEqual(
       expect.arrayContaining(['GLOBAL', 'AR', 'US', 'BR', 'MX', 'EU'])
     )
-    expect(DECISION_TEMPLATES).toHaveLength(4)
+    expect(DECISION_TEMPLATES.length).toBeGreaterThanOrEqual(4)
+    const levels = new Set(DECISION_TEMPLATES.map((t) => t.level))
+    expect(levels.has('L4_MACRO')).toBe(true)
+    expect(levels.has('L3_EMPRESA')).toBe(true)
+    expect(levels.has('L2_PERSONAL')).toBe(true)
+    expect(levels.has('L1_COTIDIANO')).toBe(true)
   })
 
   it('genera las 4 lentes estratégicas (Maquiavelo, Meadows, Ariely, Drucker)', () => {
@@ -327,5 +334,50 @@ describe('Federation Bridge & Multi-Network 4D Power Graph', () => {
     expect(csv).toContain('dec-1')
     expect(csv).toContain('"Expansión Planta, Fábrica"')
     expect(csv).toContain('"Nota con ""comillas"" y comas, test"')
+  })
+
+  it('evaluateCrossImpactGrid genera grilla 5x5 consistente y calcula el índice de robustez global', () => {
+    const model = buildDefaultCrossImpactModel(
+      [
+        { id: 'alt-a', name: 'Cobertura Defensiva' },
+        { id: 'alt-b', name: 'Expansión Agresiva' },
+        { id: 'alt-c', name: 'Modelo Híbrido Ágil' },
+      ],
+      'AR'
+    )
+
+    const result = evaluateCrossImpactGrid(model.variableX, model.variableY, model.alternatives)
+    expect(result.grid).toHaveLength(5)
+    result.grid.forEach((row) => {
+      expect(row).toHaveLength(5)
+    })
+
+    const totalCells = result.grid.flat().length
+    expect(totalCells).toBe(25)
+
+    const totalWinPct = result.robustnessScores.reduce((sum, s) => sum + s.winPct, 0)
+    expect(Math.round(totalWinPct)).toBe(100)
+
+    expect(result.recommendedAlternativeId).toBeTruthy()
+    expect(result.stressFragilityIndex).toBeGreaterThanOrEqual(0)
+    expect(result.stressFragilityIndex).toBeLessThanOrEqual(100)
+  })
+
+  it('runMonteCarloSimulation con correlación sistémica incrementa la dispersión de cola en crisis (rho > 0)', () => {
+    const factors = [
+      { id: 'f1', name: 'Demanda', min: -30, mode: 0, max: 30, weight: 1.0 },
+      { id: 'f2', name: 'Precios', min: -30, mode: 0, max: 30, weight: 1.2 },
+      { id: 'f3', name: 'Actividad', min: -30, mode: 0, max: 30, weight: 1.0 },
+    ]
+
+    const simIndep = runMonteCarloSimulation(50, factors, 0, 3000, 42, 0)
+    const simCorrelated = runMonteCarloSimulation(50, factors, 0, 3000, 42, 0.7)
+
+    const spanIndep = simIndep.p90 - simIndep.p10
+    const spanCorrelated = simCorrelated.p90 - simCorrelated.p10
+
+    // Con alta correlación sistémica positiva, los shocks se alinean y aumentan la dispersión P10-P90
+    expect(spanCorrelated).toBeGreaterThan(spanIndep)
+    expect(simCorrelated.valueAtRisk95).toBeLessThan(simIndep.valueAtRisk95)
   })
 })

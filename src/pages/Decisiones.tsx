@@ -18,6 +18,8 @@ import {
   analyzeReversibilityAndPreMortem,
   generateDecisionMarkdownReport,
   generateDecisionJournalCsv,
+  evaluateCrossImpactGrid,
+  buildDefaultCrossImpactModel,
   type DecisionLevel,
   type MonteCarloFactor,
   type SequentialGameBranch,
@@ -29,6 +31,7 @@ import {
   DECISION_TEMPLATES,
   generateMultiVisionAnalysis,
   type RegionCode,
+  type DecisionTemplate,
 } from '@/lib/context-packs'
 import {
   loadActiveRegion,
@@ -95,17 +98,31 @@ export default function DecisionesPage() {
   const [region, setRegion] = useState<RegionCode>(initialRegion)
   const [activeLevel, setActiveLevel] = useState<DecisionLevel>(initialLevel)
   const [activeEngineTab, setActiveEngineTab] = useState<
-    'uncertainty' | 'montecarlo' | 'sequential' | 'topsis'
+    'uncertainty' | 'montecarlo' | 'crossimpact' | 'sequential' | 'topsis'
   >('uncertainty')
+  const [systemicCorrelation, setSystemicCorrelation] = useState<number>(0)
 
   const regionPack = REGIONAL_CONTEXT_PACKS[region]
   const live = useLiveIndicators(regionPack.wbCountryIso)
 
+  // Plantillas disponibles para el nivel activo
+  const levelTemplates = useMemo(
+    () => DECISION_TEMPLATES.filter((t) => t.level === activeLevel),
+    [activeLevel]
+  )
+
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
+    const match = DECISION_TEMPLATES.find((t) => t.level === initialLevel)
+    return match?.id ?? DECISION_TEMPLATES[1].id
+  })
+
   // Cargar plantilla correspondiente al nivel activo
   const currentTemplate = useMemo(
     () =>
-      DECISION_TEMPLATES.find((t) => t.level === activeLevel) ?? DECISION_TEMPLATES[1],
-    [activeLevel]
+      DECISION_TEMPLATES.find((t) => t.id === selectedTemplateId) ??
+      DECISION_TEMPLATES.find((t) => t.level === activeLevel) ??
+      DECISION_TEMPLATES[1],
+    [selectedTemplateId, activeLevel]
   )
 
   const [decisionTitle, setDecisionTitle] = useState<string>(
@@ -194,10 +211,8 @@ export default function DecisionesPage() {
   >('competitiva')
   const [wizardAppliedNotice, setWizardAppliedNotice] = useState<boolean>(false)
 
-  // Sincronizar cambio de nivel con su plantilla
-  const handleSelectLevel = (lvl: DecisionLevel) => {
-    setActiveLevel(lvl)
-    const tpl = DECISION_TEMPLATES.find((t) => t.level === lvl) ?? DECISION_TEMPLATES[0]
+  const applyTemplate = (tpl: DecisionTemplate) => {
+    setSelectedTemplateId(tpl.id)
     setDecisionTitle(tpl.title)
     setAlternatives([...tpl.alternatives])
     setScenarios([...tpl.scenarios])
@@ -215,6 +230,13 @@ export default function DecisionesPage() {
     setTopsisAlts(
       tpl.topsisAlternatives.map((a) => ({ ...a, scores: { ...a.scores } }))
     )
+  }
+
+  // Sincronizar cambio de nivel con su plantilla
+  const handleSelectLevel = (lvl: DecisionLevel) => {
+    setActiveLevel(lvl)
+    const tpl = DECISION_TEMPLATES.find((t) => t.level === lvl) ?? DECISION_TEMPLATES[0]
+    applyTemplate(tpl)
     setSearchParams({ level: lvl, region })
   }
 
@@ -243,9 +265,17 @@ export default function DecisionesPage() {
   )
 
   const mcResult = useMemo(
-    () => runMonteCarloSimulation(mcBaseOutcome, mcFactors, 0, 3000, 1337),
-    [mcBaseOutcome, mcFactors]
+    () => runMonteCarloSimulation(mcBaseOutcome, mcFactors, 0, 3000, 1337, systemicCorrelation),
+    [mcBaseOutcome, mcFactors, systemicCorrelation]
   )
+
+  const crossImpactResult = useMemo(() => {
+    const model = buildDefaultCrossImpactModel(
+      alternatives.map((a, idx) => ({ id: `alt-${idx}`, name: a })),
+      region
+    )
+    return evaluateCrossImpactGrid(model.variableX, model.variableY, model.alternatives)
+  }, [alternatives, region])
 
   const kellyResult = useMemo(
     () => computeKellyFraction(mcResult.probabilityPositive / 100, kellyPayoffRatio, 0.5),
@@ -1176,6 +1206,31 @@ export default function DecisionesPage() {
             )
           })}
         </div>
+
+        {/* Sub-Plantillas Enriquecidas de Decisión */}
+        {levelTemplates.length > 1 && (
+          <div className="mt-3 p-3 bg-card border border-border/60 rounded-lg flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-display uppercase tracking-wider text-muted-foreground font-semibold mr-1">
+              Plantillas {LEVEL_META.find((m) => m.level === activeLevel)?.code}:
+            </span>
+            {levelTemplates.map((tpl) => {
+              const isSelected = selectedTemplateId === tpl.id
+              return (
+                <button
+                  key={tpl.id}
+                  onClick={() => applyTemplate(tpl)}
+                  className={`px-2.5 py-1 rounded text-xs font-display transition-all cursor-pointer border ${
+                    isSelected
+                      ? 'border-primary bg-primary/20 text-primary font-bold shadow-xs'
+                      : 'border-border/60 bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {tpl.title}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Barra de Definición del Problema Activo */}
@@ -1313,12 +1368,16 @@ export default function DecisionesPage() {
               label: '02 · Simulación Monte Carlo (3.000 corridas + VaR + Kelly)',
             },
             {
+              id: 'crossimpact',
+              label: '03 · Stress-Test Cruzado 2D (Heatmap de Robustez 5x5)',
+            },
+            {
               id: 'sequential',
-              label: '03 · Árbol de Juego Secuencial (Inducción Hacia Atrás)',
+              label: '04 · Árbol de Juego Secuencial (Inducción Hacia Atrás)',
             },
             {
               id: 'topsis',
-              label: '04 · Multicriterio TOPSIS (Priorización Rápida)',
+              label: '05 · Multicriterio TOPSIS (Priorización Rápida)',
             },
           ] as const
         ).map((tab) => (
@@ -1509,6 +1568,44 @@ export default function DecisionesPage() {
       {activeEngineTab === 'montecarlo' && (
         <div className="grid lg:grid-cols-[1fr_380px] gap-6">
           <div className="space-y-6">
+            {/* Selector de Régimen de Correlación Sistémica (Bloque 7) */}
+            <div className="bg-card border border-border/60 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-display font-semibold text-foreground flex items-center gap-2">
+                  <span>Régimen de Correlación de Riesgos (ρ):</span>
+                  <span className="text-primary font-bold">
+                    {systemicCorrelation === 0
+                      ? 'Normal (ρ = 0)'
+                      : systemicCorrelation > 0
+                      ? `Crisis / Caída Conjunta (ρ = +${systemicCorrelation})`
+                      : `Cobertura Antifrágil (ρ = ${systemicCorrelation})`}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Simula si los factores se mueven de forma independiente o si en momentos de pánico caen todos al mismo tiempo.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { label: 'Normal (ρ=0)', value: 0 },
+                  { label: 'Crisis Sistémica (ρ=+0.6)', value: 0.6 },
+                  { label: 'Cobertura (ρ=-0.4)', value: -0.4 },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={() => setSystemicCorrelation(item.value)}
+                    className={`px-2.5 py-1 rounded text-xs font-display border transition-all cursor-pointer ${
+                      systemicCorrelation === item.value
+                        ? 'border-primary bg-primary/20 text-primary font-bold shadow-xs'
+                        : 'border-border/60 bg-muted/40 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-card border border-border/60 rounded-lg p-4">
                 <div className="text-[10px] font-display uppercase text-muted-foreground">
@@ -1705,7 +1802,203 @@ export default function DecisionesPage() {
         </div>
       )}
 
-      {/* MOTOR 3: ÁRBOL DE JUEGO SECUENCIAL (INDUCCIÓN HACIA ATRÁS) */}
+      {/* MOTOR 3: STRESS-TEST CRUZADO 2D (HEATMAP DE ROBUSTEZ 5x5) */}
+      {activeEngineTab === 'crossimpact' && (
+        <div className="space-y-6">
+          <div className="bg-card border border-border/60 rounded-lg p-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary font-semibold">
+                    Matriz de Estrés 2D
+                  </span>
+                  <span className="text-xs font-display text-muted-foreground">
+                    25 cuadrantes de choque cruzado (Eje X: {crossImpactResult.variableX.name} vs Eje Y: {crossImpactResult.variableY.name})
+                  </span>
+                </div>
+                <h2 className="font-display text-lg font-bold text-foreground">
+                  Mapa de Calor de Robustez y Puntos de Quiebre
+                </h2>
+                <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
+                  En el mundo real, los problemas no ocurren aislados: la inflación suele venir con depreciación cambiaria o caída de demanda. Este mapa evalúa cuál alternativa sobrevive en cada combinación y señala tu fragilidad de cola extrema.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="text-right">
+                  <div className="text-[10px] font-display uppercase text-muted-foreground">
+                    Índice de Fragilidad Extrema
+                  </div>
+                  <div
+                    className={`font-display text-2xl font-bold ${
+                      crossImpactResult.stressFragilityIndex > 50
+                        ? 'text-destructive'
+                        : 'text-signal-ally'
+                    }`}
+                  >
+                    {crossImpactResult.stressFragilityIndex} / 100
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {crossImpactResult.stressFragilityIndex > 50
+                      ? 'Alta vulnerabilidad en shocks combinados'
+                      : 'Estrategia antifrágil y balanceada'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Scorecards de Robustez */}
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+              {crossImpactResult.robustnessScores.map((score) => {
+                const isRecommended =
+                  score.alternativeId === crossImpactResult.recommendedAlternativeId
+                return (
+                  <div
+                    key={score.alternativeId}
+                    className={`p-3.5 rounded-lg border transition-all ${
+                      isRecommended
+                        ? 'border-signal-ally bg-signal-ally/10 shadow-sm'
+                        : 'border-border/60 bg-muted/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-display text-xs font-bold text-foreground truncate max-w-[200px]">
+                        {score.alternativeName}
+                      </span>
+                      {isRecommended && (
+                        <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-signal-ally/20 text-signal-ally font-bold">
+                          ★ Más Robusta
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-border/40 text-[11px] font-display">
+                      <div>
+                        <div className="text-muted-foreground text-[10px]">Dominio</div>
+                        <div className="font-bold text-foreground">{score.winPct}%</div>
+                        <div className="text-[9px] text-muted-foreground">{score.cellsWon}/25 celdas</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-[10px]">Payoff Medio</div>
+                        <div className="font-bold text-primary">{score.avgPayoff}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-[10px]">Peor Caso</div>
+                        <div
+                          className={`font-bold ${
+                            score.minPayoff < 0 ? 'text-destructive' : 'text-foreground'
+                          }`}
+                        >
+                          {score.minPayoff}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Heatmap Grid Table 5x5 */}
+          <div className="bg-card border border-border/60 rounded-lg p-5 overflow-x-auto space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-display uppercase tracking-wider font-semibold text-muted-foreground">
+                Matriz de Desempeño: {crossImpactResult.variableY.name} (Filas) vs{' '}
+                {crossImpactResult.variableX.name} (Columnas)
+              </div>
+              <div className="flex items-center gap-3 text-[10px] font-display text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="size-2.5 rounded bg-emerald-500/20 border border-emerald-500/40 inline-block" />
+                  Gana Opción A
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="size-2.5 rounded bg-blue-500/20 border border-blue-500/40 inline-block" />
+                  Gana Opción B
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="size-2.5 rounded bg-purple-500/20 border border-purple-500/40 inline-block" />
+                  Gana Opción C
+                </span>
+              </div>
+            </div>
+
+            <div className="min-w-[700px]">
+              <table className="w-full border-collapse text-xs font-display">
+                <thead>
+                  <tr>
+                    <th className="p-2.5 border border-border/40 bg-muted/50 text-left text-muted-foreground text-[10px]">
+                      {crossImpactResult.variableY.name} ↓ \ {crossImpactResult.variableX.name} →
+                    </th>
+                    {crossImpactResult.variableX.levels.map((xVal, xIdx) => (
+                      <th
+                        key={xIdx}
+                        className="p-2.5 border border-border/40 bg-muted/50 text-center text-foreground font-semibold"
+                      >
+                        <div>
+                          {xVal}
+                          {crossImpactResult.variableX.unit}
+                        </div>
+                        <div className="text-[9px] text-muted-foreground font-normal">
+                          {crossImpactResult.variableX.labels?.[xIdx] ?? ''}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {crossImpactResult.grid.map((row, yIdx) => {
+                    const yVal = crossImpactResult.variableY.levels[yIdx]
+                    const yLabel = crossImpactResult.variableY.labels?.[yIdx] ?? ''
+                    return (
+                      <tr key={yIdx}>
+                        <th className="p-2.5 border border-border/40 bg-muted/40 text-left text-foreground font-semibold">
+                          <div>
+                            {yVal}
+                            {crossImpactResult.variableY.unit}
+                          </div>
+                          <div className="text-[9px] text-muted-foreground font-normal">{yLabel}</div>
+                        </th>
+                        {row.map((cell, xIdx) => {
+                          const winnerIdx = alternatives.findIndex(
+                            (_, idx) => `alt-${idx}` === cell.winningAlternativeId
+                          )
+                          const colorClass =
+                            winnerIdx === 0
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                              : winnerIdx === 1
+                              ? 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+                              : 'bg-purple-500/10 border-purple-500/30 text-purple-300'
+
+                          return (
+                            <td
+                              key={xIdx}
+                              className={`p-2.5 border border-border/40 text-center transition-colors hover:brightness-125 ${colorClass}`}
+                            >
+                              <div
+                                className="font-bold text-[11px] truncate"
+                                title={cell.winningAlternativeName}
+                              >
+                                {cell.winningAlternativeName.slice(0, 20)}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground mt-0.5">
+                                Margen: +{cell.winningMargin} pts
+                              </div>
+                              <div className="text-[9px] opacity-75 mt-0.5">
+                                Payoff: {cell.payoffs[cell.winningAlternativeId]}
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOTOR 4: ÁRBOL DE JUEGO SECUENCIAL (INDUCCIÓN HACIA ATRÁS) */}
       {activeEngineTab === 'sequential' && (
         <div className="bg-card border border-border/60 rounded-lg p-6 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-4">
