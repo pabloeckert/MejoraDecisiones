@@ -139,6 +139,29 @@ export default function IAPage() {
         </Link>
       </div>
 
+      {/* Banner Copilot Agéntico & Red Team (v5.10.0) */}
+      <div className="bg-card border border-rose-500/40 rounded-lg p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="font-display text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold border border-rose-500/40">
+              Agentic Copilot · Red Team &amp; Structurer
+            </span>
+            <span className="text-xs font-display text-muted-foreground">
+              BYOK Client-Side (Gemini, OpenAI, Ollama o Offline)
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground max-w-3xl">
+            Auditá tus decisiones con un <strong>Abogado del Diablo</strong> adversarial que detecta sesgos cognitivos y proyecta pre-mortems, o convertí texto libre en matrices matemáticas con <strong>Structurer IA</strong>.
+          </p>
+        </div>
+        <Link
+          to="/decisiones"
+          className="px-4 h-9 rounded-md bg-rose-500/20 border border-rose-500/50 text-rose-200 hover:bg-rose-500/30 font-display text-xs font-bold inline-flex items-center shrink-0 gap-1.5 transition-colors"
+        >
+          <span>🛡️</span> Probar Red Team en /decisiones →
+        </Link>
+      </div>
+
       {/* Consenso Ponderado + Dispersión */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-primary/10 border border-primary/40 rounded-lg p-5">

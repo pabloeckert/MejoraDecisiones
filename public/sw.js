@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mejora-decisiones-os-v5.7.0'
+const CACHE_NAME = 'mejora-decisiones-os-v5.10.0'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -36,6 +36,16 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
 
   const url = new URL(request.url)
+
+  // BYPASS de seguridad para IA agéntica / endpoints privados (nunca cachear ni interceptar)
+  if (
+    request.headers.has('Authorization') ||
+    url.hostname.includes('generativelanguage.googleapis.com') ||
+    url.hostname.includes('api.openai.com') ||
+    url.port === '11434'
+  ) {
+    return
+  }
 
   // HTML: network-first with cache fallback
   if (request.headers.get('accept')?.includes('text/html')) {

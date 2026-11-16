@@ -41,12 +41,22 @@ import {
   updateDecisionOutcome,
   deleteDecisionEntry,
   computeCalibrationMetrics,
+  computeBrierScoreByLevel,
+  getOverdueJournalEntries,
   exportFederationBundle,
   importFederationBundle,
   parseFederatedDecisionQuery,
   buildDiagnostico4DFederatedUrl,
   type DecisionJournalEntry,
 } from '@/lib/federation'
+import {
+  runDevilsAdvocateAgent,
+  runStructurerAgent,
+  loadAICopilotConfig,
+  saveAICopilotConfig,
+  type AICopilotConfig,
+  type DevilsAdvocateAudit,
+} from '@/lib/ai-copilot'
 import { useLiveIndicators } from '@/hooks/useLiveIndicators'
 
 const LEVEL_META: {
@@ -170,8 +180,20 @@ export default function DecisionesPage() {
   )
   const [confidenceInput, setConfidenceInput] = useState<number>(75)
   const [journalNote, setJournalNote] = useState<string>('')
+  const [reviewDueDays, setReviewDueDays] = useState<number>(30)
   const [copiedShareUrl, setCopiedShareUrl] = useState<boolean>(false)
   const [copiedMarkdown, setCopiedMarkdown] = useState<boolean>(false)
+
+  // Bloque 8: Agentic Decision Copilot & Red Team
+  const [aiConfig, setAiConfig] = useState<AICopilotConfig>(() => loadAICopilotConfig())
+  const [aiConfigDraft, setAiConfigDraft] = useState<AICopilotConfig>(() => loadAICopilotConfig())
+  const [showAiSettings, setShowAiSettings] = useState<boolean>(false)
+  const [showRedTeamModal, setShowRedTeamModal] = useState<boolean>(false)
+  const [redTeamLoading, setRedTeamLoading] = useState<boolean>(false)
+  const [redTeamAudit, setRedTeamAudit] = useState<DevilsAdvocateAudit | null>(null)
+  const [showStructurerModal, setShowStructurerModal] = useState<boolean>(false)
+  const [structurerInput, setStructurerInput] = useState<string>('')
+  const [structurerLoading, setStructurerLoading] = useState<boolean>(false)
 
   // Bloque 1: Importador Federado, Wizard Guiado 60s y Reporte Ejecutivo PDF
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -323,6 +345,10 @@ export default function DecisionesPage() {
     const regretPick = uncertaintyResult.recommendations.minimaxRegretSavageBest
     if (!pick) return
 
+    const reviewDueDate = new Date()
+    reviewDueDate.setDate(reviewDueDate.getDate() + reviewDueDays)
+    const reviewDueAt = reviewDueDate.toISOString()
+
     saveDecisionEntry({
       level: activeLevel,
       region,
@@ -337,10 +363,52 @@ export default function DecisionesPage() {
       notes:
         journalNote.trim() ||
         `Simulado en contexto ${regionPack.name}. EVPI: ${uncertaintyResult.evpi.evpi.toFixed(1)}. Éxito Monte Carlo: ${mcResult.probabilityPositive.toFixed(1)}%.`,
+      reviewDueAt,
     })
     setJournal(loadDecisionJournal())
     setJournalNote('')
   }
+
+  const handleRunRedTeam = async () => {
+    setShowRedTeamModal(true)
+    setRedTeamLoading(true)
+    const audit = await runDevilsAdvocateAgent(
+      {
+        title: decisionTitle,
+        chosenAlternative: uncertaintyResult.recommendations.consensusPick?.name ?? alternatives[0],
+        alternatives,
+        reversibility,
+      },
+      aiConfig
+    )
+    setRedTeamAudit(audit)
+    setRedTeamLoading(false)
+  }
+
+  const handleRunStructurer = async () => {
+    if (!structurerInput.trim()) return
+    setStructurerLoading(true)
+    const structured = await runStructurerAgent(structurerInput, aiConfig)
+    setDecisionTitle(structured.title)
+    setActiveLevel(structured.level)
+    setAlternatives([...structured.alternatives])
+    setScenarios([...structured.scenarios])
+    setProbabilities([...structured.probabilities])
+    setPayoffs(structured.payoffs.map((r) => [...r]))
+    setStructurerLoading(false)
+    setShowStructurerModal(false)
+    setStructurerInput('')
+  }
+
+  const handleSaveAiProviderConfig = (updated: AICopilotConfig) => {
+    setAiConfig(updated)
+    saveAICopilotConfig(updated)
+    setShowAiSettings(false)
+  }
+
+  const overdueEntries = useMemo(() => getOverdueJournalEntries(journal), [journal])
+  const overdueIds = useMemo(() => new Set(overdueEntries.map((o) => o.id)), [overdueEntries])
+  const brierByLevel = useMemo(() => computeBrierScoreByLevel(journal), [journal])
 
   const handleExportFederationJson = () => {
     const bundle = exportFederationBundle()
@@ -1274,6 +1342,37 @@ export default function DecisionesPage() {
                 Puerta Tipo 1: Irreversible (alta asimetría)
               </option>
             </select>
+          </div>
+
+          <div className="flex items-end gap-1.5 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowStructurerModal(true)}
+              className="px-2.5 h-[34px] rounded border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-display font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+              title="Estructurar un problema en lenguaje natural en matriz matemática con IA"
+            >
+              <span>⚡</span> Structurer IA
+            </button>
+            <button
+              type="button"
+              onClick={handleRunRedTeam}
+              disabled={redTeamLoading}
+              className="px-2.5 h-[34px] rounded border border-rose-500/50 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 text-xs font-display font-semibold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50 shadow-xs"
+              title="Auditoría Devil's Advocate / Red Team: sesgos, puntos ciegos y premortem"
+            >
+              <span>🛡️</span> {redTeamLoading ? 'Auditando...' : 'Red Team IA'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAiConfigDraft(aiConfig)
+                setShowAiSettings(true)
+              }}
+              className="px-2 h-[34px] rounded border border-border bg-card text-muted-foreground hover:text-foreground text-xs font-display transition-all cursor-pointer"
+              title="Configurar proveedor de IA (BYOK: Gemini, OpenAI, Ollama o Fallback Determinístico)"
+            >
+              ⚙️ BYOK
+            </button>
           </div>
         </div>
       </div>
@@ -2450,6 +2549,22 @@ export default function DecisionesPage() {
 
           <div>
             <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+              Plazo de Revisión / Auditoría
+            </label>
+            <select
+              value={reviewDueDays}
+              onChange={(e) => setReviewDueDays(Number(e.target.value))}
+              className="w-full bg-background border border-border rounded p-2 text-xs outline-none focus:border-primary font-display"
+            >
+              <option value={7}>En 7 días (Decisión táctica / L1)</option>
+              <option value={30}>En 30 días (Mes cerrado / L2-L3)</option>
+              <option value={90}>En 90 días (Trimestre / L3)</option>
+              <option value={365}>En 1 año (Estratégica / L4)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
               Supuesto crítico o condición de salida (Stop-Loss)
             </label>
             <textarea
@@ -2468,15 +2583,35 @@ export default function DecisionesPage() {
             + Guardar Decisión en Bitácora
           </button>
 
-          <div className="pt-3 border-t border-border/50 flex items-center justify-between text-xs">
-            <span className="text-muted-foreground font-display">
-              Brier Score de Calibración:
-            </span>
-            <span className="font-display font-bold text-primary">
-              {calibration.brierScore !== null
-                ? `${calibration.brierScore} (${calibration.calibrationGrade})`
-                : calibration.calibrationGrade}
-            </span>
+          <div className="pt-3 border-t border-border/50 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground font-display">
+                Brier Score General:
+              </span>
+              <span className="font-display font-bold text-primary">
+                {calibration.brierScore !== null
+                  ? `${calibration.brierScore} (${calibration.calibrationGrade})`
+                  : calibration.calibrationGrade}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-1 text-[10px] font-display pt-1 border-t border-border/30">
+              <div className="p-1 rounded bg-muted/40 text-center">
+                <span className="block text-muted-foreground">L4 Macro</span>
+                <span className="font-bold">{brierByLevel.L4_MACRO.brierScore !== null ? brierByLevel.L4_MACRO.brierScore : '—'}</span>
+              </div>
+              <div className="p-1 rounded bg-muted/40 text-center">
+                <span className="block text-muted-foreground">L3 Pyme</span>
+                <span className="font-bold">{brierByLevel.L3_EMPRESA.brierScore !== null ? brierByLevel.L3_EMPRESA.brierScore : '—'}</span>
+              </div>
+              <div className="p-1 rounded bg-muted/40 text-center">
+                <span className="block text-muted-foreground">L2 Vida</span>
+                <span className="font-bold">{brierByLevel.L2_PERSONAL.brierScore !== null ? brierByLevel.L2_PERSONAL.brierScore : '—'}</span>
+              </div>
+              <div className="p-1 rounded bg-muted/40 text-center">
+                <span className="block text-muted-foreground">L1 Día</span>
+                <span className="font-bold">{brierByLevel.L1_COTIDIANO.brierScore !== null ? brierByLevel.L1_COTIDIANO.brierScore : '—'}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2507,6 +2642,18 @@ export default function DecisionesPage() {
             </div>
           </div>
 
+          {overdueEntries.length > 0 && (
+            <div className="p-2.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300 text-xs font-display flex items-center justify-between">
+              <span>
+                ⚠ Tenés <strong>{overdueEntries.length}</strong>{' '}
+                {overdueEntries.length === 1
+                  ? 'decisión con plazo cumplido'
+                  : 'decisiones con plazos cumplidos'}{' '}
+                pendiente de auditar su resultado (Éxito, Parcial o Falló).
+              </span>
+            </div>
+          )}
+
           {journal.length === 0 ? (
             <div className="text-xs text-muted-foreground py-8 text-center border border-dashed border-border rounded-md">
               Aún no registraste decisiones en la bitácora. Simulá un escenario arriba y hacé clic en
@@ -2520,13 +2667,26 @@ export default function DecisionesPage() {
                   className="p-3 bg-background/60 border border-border/60 rounded-md flex flex-col md:flex-row md:items-center justify-between gap-3"
                 >
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[9px] font-display uppercase px-1.5 py-0.5 rounded bg-primary/15 text-primary">
                         {entry.level.replace('_', ' ')} · {entry.region}
                       </span>
                       <span className="font-display text-xs font-bold">
                         {entry.title}
                       </span>
+                      {entry.reviewDueAt && (
+                        <span
+                          className={`text-[9px] font-display px-1.5 py-0.5 rounded border ${
+                            overdueIds.has(entry.id)
+                              ? 'border-amber-500/50 bg-amber-500/20 text-amber-300 font-bold'
+                              : 'border-border/60 bg-muted/30 text-muted-foreground'
+                          }`}
+                        >
+                          {overdueIds.has(entry.id)
+                            ? '⏰ Plazo Cumplido'
+                            : `Revisar: ${new Date(entry.reviewDueAt).toLocaleDateString('es-AR')}`}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-foreground">
                       Decisión: <strong>{entry.chosenAlternative}</strong> · Confianza:{' '}
@@ -2885,6 +3045,334 @@ export default function DecisionesPage() {
                   </ul>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL STRUCTURER IA */}
+      {showStructurerModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-primary/40 rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border/50 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⚡</span>
+                <div>
+                  <h3 className="font-display text-base font-bold text-foreground">
+                    Structurer Copilot IA
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Convertí un dilema en lenguaje natural en una matriz matemática de decisión
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStructurerModal(false)}
+                className="text-muted-foreground hover:text-foreground text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-xs font-display text-muted-foreground">
+                Describí tu dilema, alternativas en mente o situación actual:
+              </label>
+              <textarea
+                rows={4}
+                value={structurerInput}
+                onChange={(e) => setStructurerInput(e.target.value)}
+                placeholder="Ej: Tengo una empresa de software y dudo si contratar 3 ingenieros seniors, terciarizar el desarrollo o enfocarnos solo en rentabilizar los clientes actuales..."
+                className="w-full bg-background border border-border rounded-lg p-3 text-xs outline-none focus:border-primary font-sans"
+              />
+              <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                <span>Proveedor activo:</span>
+                <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-display font-semibold uppercase text-[10px]">
+                  {aiConfig.provider}
+                </span>
+                {aiConfig.provider === 'fallback' && (
+                  <span className="text-muted-foreground">
+                    (Motor determinístico sin conexión ni claves)
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+              <button
+                type="button"
+                onClick={() => setShowStructurerModal(false)}
+                className="px-3 h-8 rounded border border-border text-xs font-display text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleRunStructurer}
+                disabled={structurerLoading || !structurerInput.trim()}
+                className="px-4 h-8 rounded bg-primary text-primary-foreground text-xs font-display font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              >
+                {structurerLoading ? 'Estructurando con IA...' : '⚡ Generar Matriz de Decisión'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL RED TEAM / DEVIL'S ADVOCATE */}
+      {showRedTeamModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-rose-500/40 rounded-xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border/50 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🛡️</span>
+                <div>
+                  <h3 className="font-display text-base font-bold text-foreground">
+                    Auditoría Red Team / Abogado del Diablo
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Cuestionamiento hostil para destruir sesgos de confirmación
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRedTeamModal(false)}
+                className="text-muted-foreground hover:text-foreground text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {redTeamLoading && (
+              <div className="py-12 text-center space-y-3">
+                <div className="size-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs font-display text-muted-foreground">
+                  Ejecutando agente adversario, buscando sesgos y simulando fallas críticas...
+                </p>
+              </div>
+            )}
+
+            {!redTeamLoading && redTeamAudit && (
+              <div className="space-y-4 text-xs">
+                <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 space-y-1">
+                  <div className="font-display text-[10px] uppercase tracking-wider text-rose-300 font-bold">
+                    Alternativa Bajo Auditoría
+                  </div>
+                  <div className="font-display text-sm font-bold text-foreground">
+                    {redTeamAudit.targetAlternative}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="font-display text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    1. Ataques Críticos y Cuestionamientos (Red Team)
+                  </div>
+                  <ul className="space-y-1.5">
+                    {redTeamAudit.adversarialCritiques.map((c, idx) => (
+                      <li
+                        key={idx}
+                        className="p-2.5 rounded bg-background/80 border border-border/60 flex items-start gap-2"
+                      >
+                        <span className="text-rose-400 font-bold shrink-0">⚔</span>
+                        <span className="text-muted-foreground leading-relaxed">{c}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="font-display text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    2. Sesgos Cognitivos Detectados
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {redTeamAudit.cognitiveBiasesIdentified.map((b, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2.5 rounded bg-background/80 border border-border/60 space-y-1"
+                      >
+                        <div className="font-display font-bold text-amber-300">
+                          {b.bias}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          {b.explanation}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="font-display text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    3. Puntos Ciegos y Pre-Mortem de Fracaso
+                  </div>
+                  <div className="p-3 rounded bg-background/80 border border-border/60 space-y-2">
+                    <p className="text-muted-foreground leading-relaxed italic">
+                      "{redTeamAudit.preMortemScenario}"
+                    </p>
+                    <div className="pt-2 border-t border-border/40">
+                      <span className="text-[10px] font-display uppercase text-muted-foreground font-semibold">
+                        Puntos ciegos identificados:
+                      </span>
+                      <ul className="list-disc list-inside text-[11px] text-muted-foreground space-y-0.5 mt-1">
+                        {redTeamAudit.blindSpots.map((bs, idx) => (
+                          <li key={idx}>{bs}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+              <button
+                type="button"
+                onClick={() => setShowRedTeamModal(false)}
+                className="px-4 h-8 rounded bg-secondary text-secondary-foreground text-xs font-display font-semibold hover:bg-secondary/80 cursor-pointer"
+              >
+                Cerrar Auditoría
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIGURACIÓN BYOK (BRING YOUR OWN KEY) */}
+      {showAiSettings && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border/50 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⚙️</span>
+                <div>
+                  <h3 className="font-display text-base font-bold text-foreground">
+                    Configuración de Inteligencia Artificial (BYOK)
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    100% privado en tu navegador (Client-Side) · Cero servidor intermediario
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAiSettings(false)}
+                className="text-muted-foreground hover:text-foreground text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                  Proveedor de Inferencia
+                </label>
+                <select
+                  value={aiConfigDraft.provider}
+                  onChange={(e) =>
+                    setAiConfigDraft({
+                      ...aiConfigDraft,
+                      provider: e.target.value as AICopilotConfig['provider'],
+                    })
+                  }
+                  className="w-full bg-background border border-border rounded p-2 text-xs font-display outline-none focus:border-primary"
+                >
+                  <option value="fallback">
+                    Deterministic Fallback (Sin API Key, 100% Offline y Seguro)
+                  </option>
+                  <option value="gemini">Google Gemini API (gemini-2.0-flash / Pro)</option>
+                  <option value="openai">OpenAI / OpenRouter / Compatible Endpoint</option>
+                  <option value="ollama">Ollama Local (http://localhost:11434)</option>
+                </select>
+              </div>
+
+              {aiConfigDraft.provider !== 'fallback' && (
+                <>
+                  <div>
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      API Key {aiConfigDraft.provider === 'ollama' ? '(Opcional en Ollama)' : '(Requerida)'}
+                    </label>
+                    <input
+                      type="password"
+                      value={aiConfigDraft.apiKey ?? ''}
+                      onChange={(e) =>
+                        setAiConfigDraft({ ...aiConfigDraft, apiKey: e.target.value })
+                      }
+                      placeholder={
+                        aiConfigDraft.provider === 'gemini'
+                          ? 'AIzaSy...'
+                          : 'sk-...'
+                      }
+                      className="w-full bg-background border border-border rounded p-2 text-xs font-mono outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                      Modelo
+                    </label>
+                    <input
+                      type="text"
+                      value={aiConfigDraft.model ?? ''}
+                      onChange={(e) =>
+                        setAiConfigDraft({ ...aiConfigDraft, model: e.target.value })
+                      }
+                      placeholder={
+                        aiConfigDraft.provider === 'gemini'
+                          ? 'gemini-2.0-flash'
+                          : aiConfigDraft.provider === 'ollama'
+                          ? 'llama3.2'
+                          : 'gpt-4o-mini'
+                      }
+                      className="w-full bg-background border border-border rounded p-2 text-xs font-mono outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  {aiConfigDraft.provider === 'openai' && (
+                    <div>
+                      <label className="block text-[10px] font-display uppercase text-muted-foreground mb-1">
+                        Endpoint Base (Opcional, para OpenRouter o LocalAI)
+                      </label>
+                      <input
+                        type="text"
+                        value={aiConfigDraft.endpoint ?? ''}
+                        onChange={(e) =>
+                          setAiConfigDraft({ ...aiConfigDraft, endpoint: e.target.value })
+                        }
+                        placeholder="https://openrouter.ai/api/v1/chat/completions"
+                        className="w-full bg-background border border-border rounded p-2 text-xs font-mono outline-none focus:border-primary"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="p-3 rounded bg-muted/30 border border-border/50 text-[11px] text-muted-foreground leading-relaxed">
+                🔒 <strong>Privacidad Zero-Knowledge:</strong> Tus credenciales se almacenan exclusivamente en el{' '}
+                <code className="px-1 py-0.5 rounded bg-background font-mono text-[10px]">
+                  localStorage
+                </code>{' '}
+                de tu navegador y se envían de forma directa desde tu cliente al proveedor configurado. El Service Worker nunca las cachea.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+              <button
+                type="button"
+                onClick={() => setShowAiSettings(false)}
+                className="px-3 h-8 rounded border border-border text-xs font-display text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveAiProviderConfig(aiConfigDraft)}
+                className="px-4 h-8 rounded bg-primary text-primary-foreground text-xs font-display font-semibold hover:bg-primary/90 cursor-pointer"
+              >
+                Guardar Configuración
+              </button>
             </div>
           </div>
         </div>

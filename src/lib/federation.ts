@@ -50,6 +50,7 @@ export interface DecisionJournalEntry {
   // Para calibración futura (Brier Score)
   outcomeStatus: 'pending' | 'success' | 'partial' | 'failed'
   actualOutcomeScore?: number
+  reviewDueAt?: string // ISO date string para auditoría diferida obligatoria
 }
 
 export interface FederationPayload {
@@ -213,6 +214,58 @@ export function computeCalibrationMetrics(journal: DecisionJournalEntry[]): {
     brierScore,
     calibrationGrade,
   }
+}
+
+/**
+ * Desglosa la calibración Brier Score por cada una de las 4 escalas fractales (L4 a L1).
+ * Detecta si el decisor es certero en operaciones pero sobreestima en macro, o viceversa.
+ */
+export function computeBrierScoreByLevel(journal: DecisionJournalEntry[]): Record<
+  DecisionLevel,
+  { total: number; resolved: number; brierScore: number | null }
+> {
+  const levels: DecisionLevel[] = ['L4_MACRO', 'L3_EMPRESA', 'L2_PERSONAL', 'L1_COTIDIANO']
+  const result = {} as Record<
+    DecisionLevel,
+    { total: number; resolved: number; brierScore: number | null }
+  >
+
+  levels.forEach((lvl) => {
+    const subset = journal.filter((d) => d.level === lvl)
+    const resolved = subset.filter((d) => d.outcomeStatus !== 'pending')
+    if (resolved.length === 0) {
+      result[lvl] = { total: subset.length, resolved: 0, brierScore: null }
+      return
+    }
+    const sumSqError = resolved.reduce((sum, d) => {
+      const p = Math.max(0, Math.min(1, d.confidencePct / 100))
+      const outcome = d.outcomeStatus === 'success' ? 1 : d.outcomeStatus === 'partial' ? 0.5 : 0
+      return sum + Math.pow(p - outcome, 2)
+    }, 0)
+    result[lvl] = {
+      total: subset.length,
+      resolved: resolved.length,
+      brierScore: Number((sumSqError / resolved.length).toFixed(3)),
+    }
+  })
+
+  return result
+}
+
+/**
+ * Retorna las decisiones pendientes de auditoría cuya fecha reviewDueAt ya venció.
+ */
+export function getOverdueJournalEntries(
+  journal: DecisionJournalEntry[],
+  now = new Date()
+): DecisionJournalEntry[] {
+  const nowTs = now.getTime()
+  return journal.filter((d) => {
+    if (d.outcomeStatus !== 'pending') return false
+    if (!d.reviewDueAt) return false
+    const dueTs = new Date(d.reviewDueAt).getTime()
+    return Number.isFinite(dueTs) && dueTs <= nowTs
+  })
 }
 
 export function exportFederationBundle(): FederationPayload {

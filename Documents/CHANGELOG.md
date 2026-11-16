@@ -1,5 +1,26 @@
 # Changelog — Tablero Nash / MejoraDecisiones
 
+## v5.10.0 — 2026-11-16 (Bloque 8: Agentic Decision Copilot, Devil's Advocate / Red Team, Structurer y Brier Score por Escala)
+
+### Added
+- **Módulo Copilot Agéntico de Decisión y Auditor Adversario (`src/lib/ai-copilot.ts`):**
+  - **Zero-Server Client Architecture:** Conector de inferencia 100% en el navegador (client-side) sin backend intermediario ni almacenamiento en servidores ajenos.
+  - **Soporte Multi-Proveedor BYOK (Bring Your Own Key):** Google Gemini REST API (`gemini-2.5-flash`), OpenAI / OpenRouter (`gpt-4o-mini`), Ollama Local (`localhost:11434`) y Fallback Determinístico 100% offline.
+  - **Extractor Robusto de JSON (`extractJsonFromLLMResponse`):** Parsea respuestas de LLMs tolerando bloques markdown, comentarios introductorios o texto conversacional con fallback garantizado.
+  - **Agente 1 · Structurer Copilot (`runStructurerAgent`):** Convierte cualquier dilema o situación descrita en lenguaje natural en una matriz matemática de 3 alternativas, 3 escenarios normalizados al 100% y matriz de pagos coherente.
+  - **Agente 2 · Red Team / Abogado del Diablo (`runDevilsAdvocateAgent`):** Audita decisiones tomadas buscando activamente sesgos cognitivos (optimismo complaciente, costo hundido, descuento hiperbólico), puntos ciegos, contra-argumentos de máxima solidez (*steelman*) y simulación de fracaso catastrófico (*pre-mortem* a 180 días).
+  - **Agente 3 · Sintetizador OSINT (`runOsintSynthesizerAgent`):** Extrae conclusiones estratégicas de inteligencia de negocios a partir de titulares de noticias en tiempo real.
+- **Auditoría de Bitácora con Plazos y Brier Score por Nivel (`src/lib/federation.ts`, `src/pages/Decisiones.tsx`):**
+  - Campo `reviewDueAt` en `DecisionJournalEntry` con selector de plazos de revisión (7 días, 30 días, 90 días, 1 año).
+  - Detección automática y banner de alerta para decisiones vencidas (`getOverdueJournalEntries`).
+  - Desglose analítico de calibración predictiva con Brier Score por escala fractal (`L4_MACRO`, `L3_EMPRESA`, `L2_PERSONAL`, `L1_COTIDIANO`) con `computeBrierScoreByLevel`.
+- **Integración Visual y Modales Interactivos (`src/pages/Decisiones.tsx`, `src/pages/IA.tsx`):**
+  - Botones de acción directa en la barra de definición de problema: `⚡ Structurer IA`, `🛡️ Red Team IA` y `⚙️ BYOK`.
+  - Modales flotantes estilizados para Structurer, Red Team y configuración de credenciales privadas.
+  - Protección en Service Worker (`public/sw.js`) para evitar cacheo o interceptación de tokens de API.
+- **Suite de Pruebas Unitarias de IA Agéntica (`src/__tests__/ai-copilot.test.ts`):**
+  - 10 nuevos tests unitarios cubriendo extracción de JSON, agentes estructuradores, red team, sintetizador OSINT, persistencia BYOK, cálculo de Brier Score por escala y filtro de auditorías vencidas (**87 tests totales pasando**).
+
 ## v5.9.0 — 2026-11-16 (Bloque 7: Simulación Avanzada 2027, Stress-Test Cruzado 2D, Correlación Monte Carlo y Plantillas Multi-Escala)
 
 ### Added
