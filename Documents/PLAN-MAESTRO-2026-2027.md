@@ -108,7 +108,7 @@
 ---
 
 ### BLOQUE 8 (`v5.10.0`) — Agentic Decision Copilot (BYOK / Local LLM) + Higiene Cognitiva y Revisión de Bitácora
-**Estado:** ⏳ PENDIENTE
+**Estado:** ✅ COMPLETO
 
 **Objetivos y Tareas Exactas:**
 1. **Adaptador de IA Agéntica Cliente *Zero-Server* (`src/lib/ai-copilot.ts`):**
@@ -133,7 +133,7 @@
 ---
 
 ### BLOQUE 9 (`v6.0.0`) — Cierre Production-Grade: Zod Validation, UI Smoke Tests, Modo Directorio WCAG + i18n (`ES`/`EN`) y SDK Contrato
-**Estado:** ⏳ PENDIENTE
+**Estado:** ✅ COMPLETO
 
 **Objetivos y Tareas Exactas:**
 1. **Validación en Fronteras sin Dependencias Pesadas (o Zod-ready Guards en `src/lib/federation.ts` y `src/lib/api-client.ts`):**

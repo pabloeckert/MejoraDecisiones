@@ -132,6 +132,28 @@
   --border: oklch(0.88 0.01 250);
   --input: oklch(0.90 0.01 250);
   --ring: oklch(0.38 0.14 255);
+
+  /* Accessible WCAG AA signals for light Directorio theme */
+  --signal-ally: oklch(0.42 0.15 160);
+  --signal-rival: oklch(0.50 0.20 25);
+  --signal-neutral: oklch(0.42 0.03 250);
+  --signal-warn: oklch(0.46 0.16 70);
+}
+
+/* WCAG AA text contrast overrides on light Directorio background */
+[data-theme="directorio"] .text-amber-300,
+[data-theme="directorio"] .text-amber-400 {
+  color: oklch(0.45 0.16 75) !important;
+}
+
+[data-theme="directorio"] .text-rose-300,
+[data-theme="directorio"] .text-rose-400 {
+  color: oklch(0.48 0.20 25) !important;
+}
+
+[data-theme="directorio"] .text-emerald-300,
+[data-theme="directorio"] .text-emerald-400 {
+  color: oklch(0.40 0.15 155) !important;
 }
 
 @layer base {

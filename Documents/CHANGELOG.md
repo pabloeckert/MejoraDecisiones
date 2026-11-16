@@ -1,5 +1,23 @@
 # Changelog — Tablero Nash / MejoraDecisiones
 
+## v6.0.0 — 2026-11-16 (Bloque 9: Cierre Final a Producción, Validación de Fronteras, UI Smoke Tests, Modo Directorio WCAG y Toggle ES/EN)
+
+### Added
+- **Validación de Fronteras en Tiempo de Ejecución (`src/lib/federation.ts`):**
+  - Implementada función pura de validación defensiva `validateFederationBundle(payload)` sin dependencias externas.
+  - Verifica esquema de versión exacto (`mejora.decision-os.v1`), consistencia de regiones geográficas, límites numéricos estrictos ($0 \le \% \le 100$, meses de liquidez en $[0, 120]$) y sanitiza cadenas contra inyecciones XSS y etiquetas script en títulos y notas.
+  - Endurecimiento del receptor de `postMessage` (`registerFederationBridge`) para validar antes de persistir cualquier bundle o perfil entrante.
+- **Auditoría Visual de Contraste WCAG AA para Modo Directorio (`src/styles.css`):**
+  - Calibración de señales de dominio sobre fondo claro: `--signal-ally` (verde profundo `oklch(0.42 0.15 160)`), `--signal-rival` (rojo ladrillo `oklch(0.50 0.20 25)`), `--signal-warn` (ámbar oscuro accesible `oklch(0.46 0.16 70)`).
+  - Reglas de contraste obligatorio para clases Tailwind `.text-amber-300`, `.text-amber-400`, `.text-rose-300`, `.text-emerald-300` cuando se activa `data-theme="directorio"`, garantizando ratio de contraste $> 4.5:1$ (WCAG AA).
+- **Selector de Idioma Ligero ES / EN (`src/components/dashboard-shell.tsx`):**
+  - Toggle `🌐 ES / 🌐 EN` en la barra superior con persistencia en `localStorage` (`mejora_locale`) e hidratación reactiva del atributo `document.documentElement.lang`.
+- **Suite Integral de Tests de Federación y Smoke Tests UI (`src/__tests__/federation.test.ts`, `src/__tests__/ui-smoke.test.ts`):**
+  - 13 nuevos tests unitarios verificando aprobación de bundles válidos, rechazo de versiones inválidas, rechazo de rangos numéricos fuera de límites, sanitización XSS, hidratación de query params y metadata de producción.
+  - **Total de 100 tests unitarios e integrales pasando con 0 errores** en Vitest.
+- **Documento Maestro de Federación y Contrato de Ecosistema (`Documents/INTEGRACION-ECOSISTEMA-MEJORA.md`):**
+  - Especificación exhaustiva de los 4 canales de integración (`window.MejoraDecisionOS`, `postMessage`, deep links, retorno al Diagnóstico 4D) y garantías de privacidad zero-knowledge.
+
 ## v5.10.0 — 2026-11-16 (Bloque 8: Agentic Decision Copilot, Devil's Advocate / Red Team, Structurer y Brier Score por Escala)
 
 ### Added

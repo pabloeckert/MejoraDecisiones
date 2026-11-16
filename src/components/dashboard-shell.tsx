@@ -39,6 +39,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<'tactico' | 'directorio'>(() => {
     return (localStorage.getItem('nash_theme') as 'tactico' | 'directorio') || 'tactico'
   })
+  const [locale, setLocale] = useState<'es' | 'en'>(() => {
+    return (localStorage.getItem('mejora_locale') as 'es' | 'en') || 'es'
+  })
   const [cmdOpen, setCmdOpen] = useState(false)
   const [cmdQuery, setCmdQuery] = useState('')
 
@@ -50,6 +53,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     }
     localStorage.setItem('nash_theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    localStorage.setItem('mejora_locale', locale)
+    document.documentElement.lang = locale
+  }, [locale])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -162,6 +170,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               title="Alternar entre Modo Táctico y Modo Directorio (Mejora Continua)"
             >
               <span>{theme === 'directorio' ? '🏢 Modo Directorio' : '⚡ Modo Táctico'}</span>
+            </button>
+            <button
+              onClick={() => setLocale((l) => (l === 'es' ? 'en' : 'es'))}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-display font-bold border border-border/60 hover:border-primary/40 bg-card/60 hover:bg-accent/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-sm"
+              title={locale === 'es' ? 'Cambiar interfaz a English' : 'Switch interface to Spanish'}
+            >
+              <span>{locale === 'es' ? '🌐 ES' : '🌐 EN'}</span>
             </button>
           </div>
         </div>
