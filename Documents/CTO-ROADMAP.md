@@ -1,9 +1,25 @@
-# CTO Roadmap — Tablero Nash / MejoraDecisiones
+# CTO Roadmap — MejoraDecisiones / Decision OS
 
-> **Última actualización:** 2026-05-14
-> **CTO Session ID:** claude/cto-analysis-framework-E583b
-> **Versión base analizada:** 4.2.0
-> **Para retomar:** leer `CTO-SESSION-STATE.md`
+> **Última actualización:** 2026-11-16 (Actualizado a `v5.7.0` + Plan 2026–2027)  
+> **Documento operativo vigente (Bloques 6–9):** Ver [PLAN-MAESTRO-2026-2027.md](./PLAN-MAESTRO-2026-2027.md)  
+> **Para retomar:** leer [CTO-SESSION-STATE.md](./CTO-SESSION-STATE.md)
+
+---
+
+## Arquitectura de Evolución (Histórico → Cierre `v6.0.0`)
+
+```
+FASE 0 ✅  → Plan + Docs CTO
+FASE 1–8 ✅ → Decision OS v5.2–v5.6 (16 módulos, Motor Matemático, ContextPacks L4–L1, Grafo 4D, Centinelas, Federación)
+FASE 9 ✅  → Pre-Mortem + Reversibilidad Tipo 1/2 + Markdown/CSV + PWA Offline v5.7.0
+───────────────────────────────────────────────────────────────────────────────
+BLOQUE 6 ⏳ → Datos Reales 2026–2027 (Fix INDEC/ArgentinaDatos + GDELT OSINT) + CI/CD Real (.github/workflows) [v5.8.0]
+BLOQUE 7 ⏳ → Stress-Test Cruzado 2D + Monte Carlo Correlacionado + Escenarios/L1-L2 Globales [v5.9.0]
+BLOQUE 8 ⏳ → Agentic Decision Copilot (BYOK/Ollama Zero-Server) + Higiene Temporal Bitácora [v5.10.0]
+BLOQUE 9 ⏳ → Validación Fronteras + UI Smoke Tests + WCAG Directorio + ES/EN + SDK Ecosistema [v6.0.0]
+```
+
+> **Nota de auditoría (2026-11-16):** Las secciones históricas debajo se conservan como registro de origen (`v4.2.0`), pero el detalle técnico actualizado para ejecutar los bloques pendientes reside íntegramente en [PLAN-MAESTRO-2026-2027.md](./PLAN-MAESTRO-2026-2027.md).
 
 ---
 

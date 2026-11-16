@@ -1,7 +1,7 @@
 # CTO Session State — Para "continuemos"
 
-> **Instrucción:** Cuando digas "continuemos", Claude lee este archivo primero para retomar exactamente donde quedamos.
-> **Última actualización:** 2026-11-15 (Bloque 5 completo — Auditor Pre-Mortem, Reversibilidad Tipo 1 vs 2, Exportadores Markdown/CSV y PWA Offline v5.7.0)
+> **Instrucción:** Al decir **"continuemos"**, leer primero este archivo y [Documents/PLAN-MAESTRO-2026-2027.md](./PLAN-MAESTRO-2026-2027.md) para retomar exactamente desde el bloque pendiente.
+> **Última actualización:** 2026-11-16 (Auditoría integral v5.7.0 + Plan Maestro 2026–2027 creado)
 > **Rama de trabajo:** `main`
 
 ---
@@ -28,6 +28,10 @@ Claude leerá este archivo, entenderá el estado exacto, y continuará desde la 
 | FASE 7 — Elevación Total 16/16 Módulos (Kanban, IA, Intl, Provincias, Sombra) | ✅ COMPLETA | 2026-11-14 (v5.5 Bloque 3) |
 | FASE 8 — Alertas Centinela, Comparador Global, Onboarding 60s y Federación Bidireccional | ✅ COMPLETA | 2026-11-14 (v5.6 Bloque 4: `Indicadores.tsx`, `Overview.tsx`, `federation.ts`) |
 | FASE 9 — Auditor Pre-Mortem, Reversibilidad Tipo 1 vs 2, Exportador Markdown/CSV y PWA Offline | ✅ COMPLETA | 2026-11-15 (v5.7 Bloque 5: `decision-engine.ts`, `Decisiones.tsx`, `sw.js`) |
+| FASE 10 (Bloque 6) — Reparación APIs en Vivo (`ArgentinaDatos` + `GDELT 2.0`), Datos 2026–2027 y CI/CD Real | ⏳ SIGUIENTE | Plan en `PLAN-MAESTRO-2026-2027.md` (`v5.8.0`) |
+| FASE 11 (Bloque 7) — Stress-Test Cruzado 2D, Correlación Monte Carlo y Escenarios/L1-L2 Globales | ⏳ PENDIENTE | Plan en `PLAN-MAESTRO-2026-2027.md` (`v5.9.0`) |
+| FASE 12 (Bloque 8) — Agentic Decision Copilot (BYOK/Local LLM) y Gobernanza Temporal Bitácora | ⏳ PENDIENTE | Plan en `PLAN-MAESTRO-2026-2027.md` (`v5.10.0`) |
+| FASE 13 (Bloque 9) — Validación Fronteras, UI Smoke Tests, WCAG Directorio + ES/EN y SDK | ⏳ PENDIENTE | Plan en `PLAN-MAESTRO-2026-2027.md` (`v6.0.0`) |
 
 ---
 
@@ -67,70 +71,49 @@ Claude leerá este archivo, entenderá el estado exacto, y continuará desde la 
 
 ---
 
-## Próxima fase a ejecutar: FASE 4 — Export + Compartir
+## Próxima fase a ejecutar: BLOQUE 6 (`v5.8.0`) — Ver `Documents/PLAN-MAESTRO-2026-2027.md`
 
-### Contexto necesario para FASE 4
+### Contexto crítico detectado en Auditoría 2026-11-16
 
-**Objetivo:** Permitir exportar análisis y compartir snapshots de escenarios.
-
-**Sub-tareas en orden de prioridad:**
-
-#### 4.1 — Export JSON de Matriz de Pagos
-- En `src/pages/Matriz.tsx`, agregar botón "Exportar JSON" que descargue el estado actual de la matriz
-- Formato: `{ size, rowLabels, colLabels, matrix, nashResult, template, exportedAt }`
-- Usar `URL.createObjectURL` + `<a>` programático
-
-#### 4.2 — Snapshots de Escenarios en URL (query params)
-- En `src/pages/Escenarios.tsx`, serializar el estado de los 6 sliders en la URL como `#/escenarios?inf=3.4&pop=0.42&...`
-- Al cargar la página, leer los params y restaurar el estado
-- Botón "Compartir" que copia la URL al portapapeles con `navigator.clipboard.writeText`
-
-#### 4.3 — Onboarding 60s para primera visita
-- En `src/pages/Overview.tsx`, detectar primera visita (localStorage `nash_onboarded`)
-- Modal simple con 3 slides:
-  1. "Qué es el Tablero Nash" (10s)
-  2. "Cómo usar el Grafo" (10s)
-  3. "Cómo interpretar la Matriz" (10s)
-- Botón "Entendido" para cerrar y no volver a mostrar
-
-**Archivos a crear/modificar:**
-- `src/pages/Matriz.tsx` — botón Export JSON (agregar, no reescribir)
-- `src/pages/Escenarios.tsx` — leer estado de Escenarios antes de modificar
-- `src/components/onboarding-modal.tsx` — componente nuevo (crear)
-- `src/pages/Overview.tsx` — integrar OnboardingModal
-
-**Notas técnicas:**
-- Para el export de imagen de Matriz: `html2canvas` no está instalado. Alternativa: export PNG con `<canvas>` nativo requiere re-renderizar la tabla como canvas. Mejor empezar con JSON + CSV que son simples.
-- Para `Escenarios.tsx`: leer el archivo completo antes de modificar, ya que tiene 6 sliders con estado complejo.
-- El `useSearchParams` de react-router v7 puede usarse para leer/escribir query params en HashRouter — verificar compatibilidad antes de usar.
+1. **`.github/workflows/` no existe actualmente** en el repositorio: hay que crear `ci.yml` y `pages.yml` reales para habilitar CI/CD y deploy automático a GitHub Pages.
+2. **APIs en vivo con brechas en `src/lib/api-client.ts` y `src/pages/Indicadores.tsx`:**
+   - `fetchInflacion()` apunta a `148.3_INIVELGENERAL_DICI_M_26` sin `representation_mode=percent_change` y desestructura `{ data: IndecSeries }` con doble `.data`. Reemplazar/priorizar `api.argentinadatos.com/v1/finanzas/indices/inflacion`.
+   - `currentRiskBps = 650` en `Indicadores.tsx` está hardcodeado; conectar `api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo`.
+   - Conectar **GDELT 2.0 DOC API** (noticias internacionales CORS en tiempo real sin API key, con throttle `>= 5.5s` y caché 15m) para `/feed` e `/internacional`.
+3. **Actualización de datos a cierre Nov-2026 → 2027:** Actualizar `src/lib/context-packs.ts` y `src/lib/data/*` (modelos de IA 2026–2027, analistas vigentes, macro cierre 2026 y ciclo electoral/geopolítico 2027) respetando el 100% de invariantes de `src/__tests__/data.test.ts`.
+4. **Versión en UI:** Sincronizar footer `dashboard-shell.tsx` (actualmente muestra `v5.2 Decision OS`).
 
 ---
 
-## Stack y rutas clave del proyecto
+## Stack y rutas reales del proyecto
 
 ```
-/home/user/MejoraDecisiones/
+c:\github\MejoraDecisiones\
 ├── src/
-│   ├── pages/          ← 15 módulos React
+│   ├── pages/          ← 16 módulos React (Overview + Decisiones + 14 analíticos)
 │   ├── components/     ← dashboard-shell, actor-graph, stat-card
-│   ├── hooks/          ← useLiveIndicators (nuevo en F3)
+│   ├── hooks/          ← useLiveIndicators
 │   ├── lib/
+│   │   ├── decision-engine.ts
+│   │   ├── context-packs.ts
+│   │   ├── federation.ts
+│   │   ├── nash-solver.ts
+│   │   ├── api-client.ts
+│   │   ├── weekly-diff.ts
 │   │   ├── seed-data.ts
-│   │   ├── nash-solver.ts   ← nuevo en F1
-│   │   ├── weekly-diff.ts   ← nuevo en F2
-│   │   ├── api-client.ts    ← nuevo en F3
-│   │   └── data/
+│   │   └── data/       ← 14 archivos de datos base
 │   └── __tests__/
-│       ├── data.test.ts
-│       └── nash.test.ts     ← nuevo en F1
-├── Documents/
-│   ├── CTO-ROADMAP.md
-│   ├── CTO-SESSION-STATE.md  ← ESTE ARCHIVO
-│   ├── MASTER.md
-│   └── CHANGELOG.md
-└── .github/workflows/
-    ├── pages.yml  ← quality job agregado en F1
-    └── ci.yml     ← nuevo en F1
+│       ├── data.test.ts (35)
+│       ├── nash.test.ts (17)
+│       └── decision-engine.test.ts (16)
+├── public/             ← manifest.json + sw.js (v5.7.0)
+└── Documents/
+    ├── PLAN-MAESTRO-2026-2027.md  ← PLAN COMPLETO BLOQUES 6–9
+    ├── ARQUITECTURA-DECISION-OS.md
+    ├── CTO-ROADMAP.md
+    ├── CTO-SESSION-STATE.md       ← ESTE ARCHIVO
+    ├── MASTER.md
+    └── CHANGELOG.md
 ```
 
 **URL de producción:** https://pabloeckert.github.io/MejoraDecisiones/
@@ -140,12 +123,12 @@ Claude leerá este archivo, entenderá el estado exacto, y continuará desde la 
 
 ## Métricas de calidad actuales
 
-| Métrica | Antes (Sesión 2) | Actual (v5.7.0 Decision OS) |
-|---------|------------------|-----------------------------|
-| Tests | 52 (datos + Nash solver) | 68 (datos + Nash + Decision Engine + 4D Graph + Federación + Pre-Mortem) |
-| CI/CD calidad | ✅ lint+test+build | ✅ lint+test+build (0 errores) |
-| Datos en vivo | 3 APIs (Dólar/BCRA/INDEC) | 5 APIs (Dólar/BCRA/INDEC + Frankfurter BCE + Banco Mundial) + Alertas Centinela |
-| Módulos Interactivos | 5/16 interactivos | 16/16 motores completos + Comparador Global + Onboarding 60s + Consola Federación |
+| Métrica | Antes (Sesión 2) | Actual (`v5.7.0` Auditado 2026-11-16) |
+|---------|------------------|---------------------------------------|
+| Tests | 52 (datos + Nash solver) | 68 pasando (datos + Nash + Decision Engine + 4D Graph + Federación + Pre-Mortem) |
+| CI/CD en repo | ❌ `.github/workflows` eliminado/ausente | ⚠️ **Brecha detectada:** Recrear `ci.yml` + `pages.yml` en Bloque 6 |
+| Datos en vivo | 3 APIs | 5 conectores (`fetchInflacion()` con bug a reparar + `currentRiskBps` fijo; sumar `ArgentinaDatos` + `GDELT` en Bloque 6) |
+| Módulos Interactivos | 5/16 interactivos | 16/16 módulos interactivos + Comparador Global + Onboarding 60s + Consola Federación |
 | Motor Decisiones | Básico (Nash 2×2) | L4–L1 + Wizard 60s + Monte Carlo + Informe PDF + Markdown + CSV + Pre-Mortem |
 | Grafo de Poder | Solo Argentina (30 nodos) | Multi-Red (Argentina / Global / Empresa editable) + Vector 4D |
 | PWA & Offline | manifest estático | Hardened v5.7 (SW Stale-While-Revalidate para APIs y assets) |
@@ -154,12 +137,12 @@ Claude leerá este archivo, entenderá el estado exacto, y continuará desde la 
 
 ## Reglas de trabajo (no cambiar sin autorización)
 
-1. Todo el desarrollo va en `claude/cto-analysis-framework-E583b`
-2. NO tocar el repo MejoraApp
-3. Commit + Push al cierre de cada fase
-4. Actualizar este archivo (CTO-SESSION-STATE.md) en cada sesión
-5. Actualizar CHANGELOG.md con cada versión
-6. Datos ficticios = OK como fallback, pero siempre con datos reales cuando hay API
+1. Todo el desarrollo va en la rama `main` (repo `MejoraDecisiones`)
+2. NO tocar el repo `MejoraApp`
+3. Ejecutar `npm run test`, `npm run lint` y `npm run build` + Commit & Push al cierre de cada bloque
+4. Actualizar `PLAN-MAESTRO-2026-2027.md`, `CTO-SESSION-STATE.md` y `CHANGELOG.md` en cada bloque
+5. Datos estáticos calibrados al ciclo **2026–2027** como fallback seguro, siempre priorizando APIs reales en vivo cuando respondan
+6. Mantener `MejoraDecisiones` 100% autónomo (*Standalone-First*) y con contrato de federación limpio (*Federation-Ready*)
 
 ---
 
