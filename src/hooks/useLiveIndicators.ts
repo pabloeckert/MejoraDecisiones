@@ -3,11 +3,13 @@ import {
   fetchDolar,
   fetchReservasBCRA,
   fetchInflacion,
+  fetchRiesgoPais,
   fetchGlobalFxRates,
   fetchWorldBankMacro,
   type DolarRate,
   type BcraReservas,
   type InflacionMensual,
+  type RiesgoPaisSnapshot,
   type GlobalFxRates,
   type WorldBankMacroSnapshot,
 } from '@/lib/api-client'
@@ -16,6 +18,7 @@ export interface LiveIndicators {
   dolar: DolarRate[] | null
   reservas: BcraReservas | null
   inflacion: InflacionMensual[] | null
+  riesgoPais: RiesgoPaisSnapshot | null
   globalFx: GlobalFxRates | null
   worldBank: WorldBankMacroSnapshot | null
   loading: boolean
@@ -30,6 +33,7 @@ export function useLiveIndicators(wbCountryIso = 'ARG'): LiveIndicators {
     dolar: null,
     reservas: null,
     inflacion: null,
+    riesgoPais: null,
     globalFx: null,
     worldBank: null,
     loading: true,
@@ -47,23 +51,26 @@ export function useLiveIndicators(wbCountryIso = 'ARG'): LiveIndicators {
         fetchDolar(),
         fetchReservasBCRA(),
         fetchInflacion(),
+        fetchRiesgoPais(),
         fetchGlobalFxRates(),
         fetchWorldBankMacro(wbCountryIso),
       ])
 
       if (cancelled) return
 
-      const [dolarRes, reservasRes, inflacionRes, fxRes, wbRes] = results
+      const [dolarRes, reservasRes, inflacionRes, riesgoRes, fxRes, wbRes] = results
       const errors: string[] = []
 
       if (dolarRes.status === 'rejected') errors.push('dólar')
       if (reservasRes.status === 'rejected') errors.push('reservas')
       if (inflacionRes.status === 'rejected') errors.push('inflación')
+      if (riesgoRes.status === 'rejected') errors.push('riesgo país')
 
       setState({
         dolar: dolarRes.status === 'fulfilled' ? dolarRes.value : null,
         reservas: reservasRes.status === 'fulfilled' ? reservasRes.value : null,
         inflacion: inflacionRes.status === 'fulfilled' ? inflacionRes.value : null,
+        riesgoPais: riesgoRes.status === 'fulfilled' ? riesgoRes.value : null,
         globalFx: fxRes.status === 'fulfilled' ? fxRes.value : null,
         worldBank: wbRes.status === 'fulfilled' ? wbRes.value : null,
         loading: false,

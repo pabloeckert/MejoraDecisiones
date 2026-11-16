@@ -1,5 +1,26 @@
 # Changelog — Tablero Nash / MejoraDecisiones
 
+## v5.8.0 — 2026-11-16 (Bloque 6: Datos Reales en Vivo, Fix APIs, CI/CD y Calibración 2026–2027)
+
+### Added
+- **Conexión Directa en Vivo de APIs Financieras & OSINT (`src/lib/api-client.ts`, `src/hooks/useLiveIndicators.ts`):**
+  - Reparado `fetchInflacion()` consumiendo primariamente `https://api.argentinadatos.com/v1/finanzas/indices/inflacion` (variación mensual real %) con fallback a `apis.datos.gob.ar` y fallback calibrado para 2026-2027.
+  - Implementada nueva función `fetchRiesgoPais()` consumiendo `https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo` (EMBI+ en bps) e integrado en el hook `useLiveIndicators` (`live.riesgoPais`).
+  - Implementada nueva función `fetchGlobalNewsGDELT(query, maxRecords)` consultando la API pública GDELT 2.0 Document API con throttle estricto (>= 5.5s) y caché de 15 minutos.
+  - Exportada utilidad `clearApiClientCache()` para testing y reseteo determinista en memoria.
+- **Canal de Inteligencia Abierta OSINT & Alertas Centinela Calibradas (`src/pages/Feed.tsx`, `src/pages/Indicadores.tsx`):**
+  - Módulo Feed (`/feed`) ahora incorpora noticias geopolíticas y económicas en vivo desde GDELT OSINT (`osint-vivo`) adaptadas automáticamente según la región activa seleccionada (`AR`, `US`, `BR`, `MX`, `EU`, `GLOBAL`).
+  - Módulo Indicadores (`/indicadores`) ahora conecta Riesgo País en vivo al Centinela Stop-Loss y a la grilla de KPIs macro, recalibrando el umbral de alerta a 950 bps y actualizando la serie histórica hasta Nov-2026.
+- **Calibración 2026–2027 de Modelos IA & Analistas (`src/lib/data/analysts.ts`, `src/lib/data/ai-thinking.ts`, `src/components/dashboard-shell.tsx`):**
+  - Incorporada perspectiva de Marina Dal Poggetto (EcoGo) y recalibradas citas de analistas nacionales e internacionales de cara al ciclo 2026–2027.
+  - Modelos de IA actualizados a perspectivas 2026-2027: Gemini 2.5 Flash, Claude 3.7 Sonnet, OpenAI o3, Llama 3.3 y DeepSeek R1.
+  - Versión oficial actualizada a `v5.8.0 Decision OS` en footer y `package.json`.
+- **Automatización CI/CD con GitHub Actions (`.github/workflows/ci.yml`, `.github/workflows/pages.yml`):**
+  - Flujo `ci.yml`: ejecución de linting, suite de tests y build de producción en cada push y PR.
+  - Flujo `pages.yml`: pipeline de calidad y despliegue automático del bundle a GitHub Pages al mergear en `main`.
+- **Suite de Pruebas Unitarias de Integración de APIs (`src/__tests__/api-client.test.ts`):**
+  - 8 nuevos tests deterministas validando parseo de inflación, riesgo país, GDELT, divisas, reservas y World Bank con resiliencia a fallas de red (**76 tests totales pasando**).
+
 ## v5.7.0 — 2026-11-15 (Bloque 5: Auditor Pre-Mortem, Reversibilidad Tipo 1 vs 2, Exportador Markdown/CSV y PWA Offline Hardening)
 
 ### Added

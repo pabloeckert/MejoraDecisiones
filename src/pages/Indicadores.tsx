@@ -17,7 +17,7 @@ interface SentinelThresholds {
 const DEFAULT_THRESHOLDS: SentinelThresholds = {
   gapPctMax: 15,
   inflationPctMax: 4.0,
-  riskBpsMax: 750,
+  riskBpsMax: 950,
   brlMax: 5.8,
 }
 
@@ -34,12 +34,12 @@ function loadSentinelThresholds(): SentinelThresholds {
 }
 
 const MACRO_DATA = [
-  { mes: 'Oct-25', inflacion: 2.7, pib: 3.8, reservas: 32, riesgo: 850 },
-  { mes: 'Nov-25', inflacion: 2.6, pib: 3.9, reservas: 33, riesgo: 800 },
-  { mes: 'Dic-25', inflacion: 2.5, pib: 4.0, reservas: 34, riesgo: 750 },
-  { mes: 'Ene-26', inflacion: 2.4, pib: 3.9, reservas: 34, riesgo: 720 },
-  { mes: 'Feb-26', inflacion: 2.3, pib: 3.7, reservas: 35, riesgo: 680 },
-  { mes: 'Mar-26', inflacion: 3.4, pib: 3.5, reservas: 35, riesgo: 650 },
+  { mes: 'Jun-26', inflacion: 2.3, pib: 3.6, reservas: 35, riesgo: 790 },
+  { mes: 'Jul-26', inflacion: 2.2, pib: 3.7, reservas: 36, riesgo: 810 },
+  { mes: 'Ago-26', inflacion: 2.4, pib: 3.8, reservas: 36, riesgo: 830 },
+  { mes: 'Sep-26', inflacion: 2.3, pib: 3.9, reservas: 37, riesgo: 820 },
+  { mes: 'Oct-26', inflacion: 2.2, pib: 4.0, reservas: 38, riesgo: 835 },
+  { mes: 'Nov-26', inflacion: 2.1, pib: 4.1, reservas: 39, riesgo: 840 },
 ]
 
 const POLITICAL_KPIS = [
@@ -125,8 +125,8 @@ export default function IndicadoresPage() {
       officialSell > 0 ? Number((((blueSell - officialSell) / officialSell) * 100).toFixed(1)) : 2.4
     const currentInflationPct = live.inflacion?.length
       ? Number(live.inflacion[live.inflacion.length - 1].valor.toFixed(1))
-      : 3.4
-    const currentRiskBps = 650
+      : 2.1
+    const currentRiskBps = live.riesgoPais?.valor ?? 840
     const currentBrl = live.globalFx?.rates?.BRL
       ? Number(live.globalFx.rates.BRL.toFixed(2))
       : 5.75
@@ -169,7 +169,7 @@ export default function IndicadoresPage() {
         protocolTitle: `Protocolo Competitividad Regional por Real Brasileño (${currentBrl} > ${thresholds.brlMax})`,
       },
     ]
-  }, [dolarOficial, dolarBlue, live.inflacion, live.globalFx, thresholds])
+  }, [dolarOficial, dolarBlue, live.inflacion, live.riesgoPais, live.globalFx, thresholds])
 
   const triggeredCount = sentinels.filter((s) => s.triggered).length
 
@@ -211,6 +211,9 @@ export default function IndicadoresPage() {
     if (kpi.label === 'Inflación mensual' && live.inflacion?.length) {
       const last = live.inflacion[live.inflacion.length - 1]
       return { ...kpi, value: `${last.valor.toFixed(1)}%`, live: true }
+    }
+    if (kpi.label === 'Riesgo país' && live.riesgoPais) {
+      return { ...kpi, value: `${live.riesgoPais.valor} bps`, live: true }
     }
     if (kpi.label === 'Tipo de cambio' && dolarOficial?.venta) {
       return { ...kpi, value: `$${Math.round(dolarOficial.venta).toLocaleString('es-AR')}`, live: true }

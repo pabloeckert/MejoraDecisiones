@@ -28,8 +28,8 @@ Claude leerá este archivo, entenderá el estado exacto, y continuará desde la 
 | FASE 7 — Elevación Total 16/16 Módulos (Kanban, IA, Intl, Provincias, Sombra) | ✅ COMPLETA | 2026-11-14 (v5.5 Bloque 3) |
 | FASE 8 — Alertas Centinela, Comparador Global, Onboarding 60s y Federación Bidireccional | ✅ COMPLETA | 2026-11-14 (v5.6 Bloque 4: `Indicadores.tsx`, `Overview.tsx`, `federation.ts`) |
 | FASE 9 — Auditor Pre-Mortem, Reversibilidad Tipo 1 vs 2, Exportador Markdown/CSV y PWA Offline | ✅ COMPLETA | 2026-11-15 (v5.7 Bloque 5: `decision-engine.ts`, `Decisiones.tsx`, `sw.js`) |
-| FASE 10 (Bloque 6) — Reparación APIs en Vivo (`ArgentinaDatos` + `GDELT 2.0`), Datos 2026–2027 y CI/CD Real | ⏳ SIGUIENTE | Plan en `PLAN-MAESTRO-2026-2027.md` (`v5.8.0`) |
-| FASE 11 (Bloque 7) — Stress-Test Cruzado 2D, Correlación Monte Carlo y Escenarios/L1-L2 Globales | ⏳ PENDIENTE | Plan en `PLAN-MAESTRO-2026-2027.md` (`v5.9.0`) |
+| FASE 10 (Bloque 6) — Reparación APIs en Vivo (`ArgentinaDatos` + `GDELT 2.0`), Datos 2026–2027 y CI/CD Real | ✅ COMPLETA | 2026-11-16 (v5.8.0 Bloque 6: `api-client.ts`, `Feed.tsx`, `Indicadores.tsx`, `.github/workflows/`, 76 tests) |
+| FASE 11 (Bloque 7) — Stress-Test Cruzado 2D, Correlación Monte Carlo y Escenarios/L1-L2 Globales | ⏳ SIGUIENTE | Plan en `PLAN-MAESTRO-2026-2027.md` (`v5.9.0`) |
 | FASE 12 (Bloque 8) — Agentic Decision Copilot (BYOK/Local LLM) y Gobernanza Temporal Bitácora | ⏳ PENDIENTE | Plan en `PLAN-MAESTRO-2026-2027.md` (`v5.10.0`) |
 | FASE 13 (Bloque 9) — Validación Fronteras, UI Smoke Tests, WCAG Directorio + ES/EN y SDK | ⏳ PENDIENTE | Plan en `PLAN-MAESTRO-2026-2027.md` (`v6.0.0`) |
 

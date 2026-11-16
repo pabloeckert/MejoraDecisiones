@@ -232,7 +232,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             </a>
           </div>
           <div className="flex items-center gap-3">
-            <span className="opacity-50">v5.2 Decision OS</span>
+            <span className="opacity-50">v5.8.0 Decision OS</span>
             <span className="text-primary/50">▲</span>
           </div>
         </div>
