@@ -1,5 +1,5 @@
 // Organismos nacionales e internacionales
-// Migrado de nash-dashboard/app.js
+// Migrado de nash-dashboard/app.js y calibrado a 2026-2027
 
 export type Organism = {
   name: string;
@@ -8,18 +8,18 @@ export type Organism = {
 };
 
 export const ORGS_NATIONAL: Organism[] = [
-  { name: "BCRA (Banco Central)", type: "Monetario", position: "Reservas USD 9.500M acumuladas. REM proyecta tipo de cambio $1.700/USD para dic-2026. Inflación esperada: 24,4% anual. Política de crawling peg mantiene ancla cambiaria." },
-  { name: "INDEC", type: "Estadísticas", position: "Pobreza 31,6% (ultimo dato). Inflación marzo 3,4%. Canasta básica supera los $350.000/hogar. Desempleo 6,8% (mejoró pero subempleo persiste." },
-  { name: "IERAL (Fundación Mediterránea)", type: "Think tank", position: "Proyección base: inflación 23% anual dic-2026. Optimista: 18-19%. Pesimista: hasta 30%. El modelo depende de la credibilidad del BCRA." },
-  { name: "CGT / Sindicalismo", type: "Gremial", position: "Oposición activa al ajuste. Paro general pendiente. Debilitados electoralmente pero capacidad de movilización intacta. Negociación salarial como palanca." },
-  { name: "Poliarquía / Catterberg", type: "Consultora", position: "LLA mantiene 40%+ imagen positiva pero núcleo duro más estrecho que voto oct-2025. Economía es el único driver de aprobación." },
+  { name: "BCRA (Banco Central)", type: "Monetario", position: "Reservas brutas consolidadas sobre USD 38.000M. Convergencia hacia esquema de competencia de monedas y flexibilización cambiaria gradual. Tasa real positiva como ancla antinflacionaria." },
+  { name: "INDEC", type: "Estadísticas", position: "Pobreza en 31,6% con tendencia de desaceleración. Inflación mensual consolidada en piso de 2,1-2,4%. Desempleo en 6,8% con heterogeneidad sectorial." },
+  { name: "IERAL (Fundación Mediterránea)", type: "Think tank", position: "Proyección 2027: superávit primario de 1,4% del PIB, reactivación del crédito comercial e hipotecario. Desafío central: competitividad cambiaria y costo impositivo subnacional." },
+  { name: "CGT / Centrales Sindicales", type: "Gremial", position: "Estrategia de negociación paritaria defensiva frente a reformas de modernización laboral. Foco en defensa de convenios colectivos y obras sociales." },
+  { name: "Poliarquía / Catterberg", type: "Consultora", position: "Gestión gubernamental estabilizada en ~42% de aprobación. La percepción de estabilidad económica y baja de inflación sostiene el respaldo de cara a 2027." },
 ];
 
 export const ORGS_INTL: Organism[] = [
-  { name: "FMI (Fondo Monetario Internacional)", type: "Multilateral", position: "Segunda revisión del programa esperada. Desembolso potencial USD 1.000M. Proyección PIB +3,5%, inflación 30,4%. Condicionalidad: metas fiscales y cambiarias." },
-  { name: "OCDE", type: "Multilateral", position: "Mejoró proyecciones de PIB para Argentina. Proceso de ingreso como miembro formal en curso. Requiere reformas estructurales de mediano plazo." },
-  { name: "Banco Mundial", type: "Multilateral", position: "Reconoce mejora en libertad económica. Pobreza sigue como principal desafío social. Programas de asistencia focalizada." },
-  { name: "BID (Banco Interamericano)", type: "Regional", position: "Financiamiento para infraestructura y PyMEs en evaluación. Línea de crédito para modernización productiva." },
-  { name: "BlackRock / Fidelity", type: "Financiero privado", position: "Posiciones largas en bonos argentinos. AL35 y GD35 como favoritos. Carry trade atractivo pero hedging costoso. Esperan desembolso FMI como catalizador." },
-  { name: "Techint / Grupo Arcor", type: "Empresarial nacional", position: "Beneficiados por acuerdo Mercosur-UE. Inversión en Vaca Muerta y sector agroexportador. Lobby transversal por estabilidad macro." },
+  { name: "FMI (Fondo Monetario Internacional)", type: "Multilateral", position: "Metas cumplidas en el plano fiscal. Revisión enfocada en acumulación neta de reservas internacionales y transición ordenada hacia la unificación cambiaria plena." },
+  { name: "OCDE", type: "Multilateral", position: "Avance sostenido en el proceso de adhesión como miembro formal. Recomendaciones de gobernanza corporativa, desregulación y transparencia estadística." },
+  { name: "Banco Mundial", type: "Multilateral", position: "Líneas de crédito activas para transición energética, electrificación rural y fortalecimiento de capital humano en sectores vulnerables." },
+  { name: "BID (Banco Interamericano)", type: "Regional", position: "Financiamiento para infraestructura logística de exportación y programas de modernización tecnológica para PyMEs." },
+  { name: "Fondos Globales de Inversión", type: "Financiero privado", position: "Ponderación positiva en bonos soberanos con cupón en dólares (GD35/GD38). Monitoreo continuo de riesgo país (rango 750-900 bps) y liquidez en 2027." },
+  { name: "Grandes Conglomerados Productivos", type: "Empresarial", position: "Liderazgo inversor en infraestructura energética (gasoductos, GNL) y minería de cobre y litio bajo amparo del RIGI." },
 ];

@@ -16,9 +16,9 @@ interface SentinelThresholds {
 
 const DEFAULT_THRESHOLDS: SentinelThresholds = {
   gapPctMax: 15,
-  inflationPctMax: 4.0,
+  inflationPctMax: 3.5,
   riskBpsMax: 950,
-  brlMax: 5.8,
+  brlMax: 6.0,
 }
 
 function loadSentinelThresholds(): SentinelThresholds {
@@ -34,12 +34,12 @@ function loadSentinelThresholds(): SentinelThresholds {
 }
 
 const MACRO_DATA = [
-  { mes: 'Jun-26', inflacion: 2.3, pib: 3.6, reservas: 35, riesgo: 790 },
-  { mes: 'Jul-26', inflacion: 2.2, pib: 3.7, reservas: 36, riesgo: 810 },
-  { mes: 'Ago-26', inflacion: 2.4, pib: 3.8, reservas: 36, riesgo: 830 },
-  { mes: 'Sep-26', inflacion: 2.3, pib: 3.9, reservas: 37, riesgo: 820 },
-  { mes: 'Oct-26', inflacion: 2.2, pib: 4.0, reservas: 38, riesgo: 835 },
-  { mes: 'Nov-26', inflacion: 2.1, pib: 4.1, reservas: 39, riesgo: 840 },
+  { mes: 'Ene-26', inflacion: 2.8, pib: 1.9, reservas: 34, riesgo: 720 },
+  { mes: 'Mar-26', inflacion: 2.6, pib: 2.1, reservas: 35, riesgo: 710 },
+  { mes: 'May-26', inflacion: 2.4, pib: 2.3, reservas: 36, riesgo: 750 },
+  { mes: 'Jul-26', inflacion: 2.3, pib: 2.2, reservas: 37, riesgo: 790 },
+  { mes: 'Sep-26', inflacion: 2.2, pib: 2.4, reservas: 37.5, riesgo: 820 },
+  { mes: 'Nov-26', inflacion: 2.3, pib: 2.5, reservas: 38.2, riesgo: 840 },
 ]
 
 const POLITICAL_KPIS = [
@@ -50,14 +50,14 @@ const POLITICAL_KPIS = [
 ]
 
 const ECON_KPIS = [
-  { label: 'Inflación mensual', value: '3.4%', change: '+1.1pp', trend: 'down', source: 'INDEC' },
-  { label: 'PIB interanual', value: '+3.5%', change: '-0.5pp', trend: 'down', source: 'INDEC' },
-  { label: 'Reservas BCRA', value: 'USD 35B', change: '+1B', trend: 'up', source: 'BCRA' },
-  { label: 'Riesgo país', value: '650 bps', change: '-30', trend: 'up', source: 'JPM' },
+  { label: 'Inflación mensual', value: '2.3%', change: '-0.3pp', trend: 'down', source: 'INDEC' },
+  { label: 'PIB interanual', value: '+2.5%', change: '+0.4pp', trend: 'up', source: 'INDEC' },
+  { label: 'Reservas BCRA', value: 'USD 38.2B', change: '+1.2B', trend: 'up', source: 'BCRA' },
+  { label: 'Riesgo país', value: '840 bps', change: '+20', trend: 'down', source: 'EMBI+' },
   { label: 'Pobreza', value: '31.6%', change: '-2.4pp', trend: 'up', source: 'INDEC' },
   { label: 'Desempleo', value: '6.8%', change: '-0.5pp', trend: 'up', source: 'INDEC' },
-  { label: 'Tipo de cambio', value: '$1,450', change: '+$50', trend: 'down', source: 'BCRA' },
-  { label: 'Superávit fiscal', value: '0.8% PIB', change: '+0.2pp', trend: 'up', source: 'MECON' },
+  { label: 'Tipo de cambio', value: '$1,480', change: '+$30', trend: 'down', source: 'BCRA' },
+  { label: 'Superávit fiscal', value: '1.4% PIB', change: '+0.4pp', trend: 'up', source: 'MECON' },
 ]
 
 const SECTOR_DATA = [
@@ -125,11 +125,11 @@ export default function IndicadoresPage() {
       officialSell > 0 ? Number((((blueSell - officialSell) / officialSell) * 100).toFixed(1)) : 2.4
     const currentInflationPct = live.inflacion?.length
       ? Number(live.inflacion[live.inflacion.length - 1].valor.toFixed(1))
-      : 2.1
+      : 2.3
     const currentRiskBps = live.riesgoPais?.valor ?? 840
     const currentBrl = live.globalFx?.rates?.BRL
       ? Number(live.globalFx.rates.BRL.toFixed(2))
-      : 5.75
+      : 5.85
 
     return [
       {
@@ -169,7 +169,7 @@ export default function IndicadoresPage() {
         protocolTitle: `Protocolo Competitividad Regional por Real Brasileño (${currentBrl} > ${thresholds.brlMax})`,
       },
     ]
-  }, [dolarOficial, dolarBlue, live.inflacion, live.riesgoPais, live.globalFx, thresholds])
+  }, [dolarOficial, dolarBlue, live.inflacion, live.globalFx, live.riesgoPais, thresholds])
 
   const triggeredCount = sentinels.filter((s) => s.triggered).length
 

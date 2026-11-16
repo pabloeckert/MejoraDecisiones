@@ -6,12 +6,14 @@ import {
   fetchRiesgoPais,
   fetchGlobalFxRates,
   fetchWorldBankMacro,
+  fetchGlobalNewsGDELT,
   type DolarRate,
   type BcraReservas,
   type InflacionMensual,
   type RiesgoPaisSnapshot,
   type GlobalFxRates,
   type WorldBankMacroSnapshot,
+  type GdeltArticle,
 } from '@/lib/api-client'
 
 export interface LiveIndicators {
@@ -21,6 +23,7 @@ export interface LiveIndicators {
   riesgoPais: RiesgoPaisSnapshot | null
   globalFx: GlobalFxRates | null
   worldBank: WorldBankMacroSnapshot | null
+  gdeltNews: GdeltArticle[] | null
   loading: boolean
   error: string | null
   lastUpdated: Date | null
@@ -28,7 +31,7 @@ export interface LiveIndicators {
 
 const POLL_INTERVAL = 5 * 60 * 1000 // 5 minutos
 
-export function useLiveIndicators(wbCountryIso = 'ARG'): LiveIndicators {
+export function useLiveIndicators(wbCountryIso = 'ARG', gdeltQuery = 'economy market trade'): LiveIndicators {
   const [state, setState] = useState<LiveIndicators>({
     dolar: null,
     reservas: null,
@@ -36,6 +39,7 @@ export function useLiveIndicators(wbCountryIso = 'ARG'): LiveIndicators {
     riesgoPais: null,
     globalFx: null,
     worldBank: null,
+    gdeltNews: null,
     loading: true,
     error: null,
     lastUpdated: null,
@@ -54,17 +58,17 @@ export function useLiveIndicators(wbCountryIso = 'ARG'): LiveIndicators {
         fetchRiesgoPais(),
         fetchGlobalFxRates(),
         fetchWorldBankMacro(wbCountryIso),
+        fetchGlobalNewsGDELT(gdeltQuery, 6),
       ])
 
       if (cancelled) return
 
-      const [dolarRes, reservasRes, inflacionRes, riesgoRes, fxRes, wbRes] = results
+      const [dolarRes, reservasRes, inflacionRes, riesgoRes, fxRes, wbRes, gdeltRes] = results
       const errors: string[] = []
 
       if (dolarRes.status === 'rejected') errors.push('dólar')
       if (reservasRes.status === 'rejected') errors.push('reservas')
       if (inflacionRes.status === 'rejected') errors.push('inflación')
-      if (riesgoRes.status === 'rejected') errors.push('riesgo país')
 
       setState({
         dolar: dolarRes.status === 'fulfilled' ? dolarRes.value : null,
@@ -73,6 +77,7 @@ export function useLiveIndicators(wbCountryIso = 'ARG'): LiveIndicators {
         riesgoPais: riesgoRes.status === 'fulfilled' ? riesgoRes.value : null,
         globalFx: fxRes.status === 'fulfilled' ? fxRes.value : null,
         worldBank: wbRes.status === 'fulfilled' ? wbRes.value : null,
+        gdeltNews: gdeltRes.status === 'fulfilled' ? gdeltRes.value : null,
         loading: false,
         error: errors.length > 0 ? `Sin datos en vivo: ${errors.join(', ')}` : null,
         lastUpdated: new Date(),
@@ -85,7 +90,7 @@ export function useLiveIndicators(wbCountryIso = 'ARG'): LiveIndicators {
       cancelled = true
       clearInterval(interval)
     }
-  }, [wbCountryIso])
+  }, [wbCountryIso, gdeltQuery])
 
   return state
 }

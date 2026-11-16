@@ -14,12 +14,12 @@ export type IntlBloc = {
 export const INTL_BLOCS: IntlBloc[] = [
   {
     flag: "🇺🇸",
-    name: "Estados Unidos / Trump",
+    name: "Estados Unidos / Washington",
     status: "aliado estratégico",
     statusColor: "var(--green)",
-    body: "<strong>Estado:</strong> Relación más cálida desde Reagan. Vaca Muerta como moneda de cambio. CNA creado 2026. Acuerdo comercial feb 2026.",
-    actors: ["Donald Trump", "Scott Bessent", "Marco Rubio"],
-    risk: "Dependencia del alineamiento hace vulnerable ante cambio en Washington.",
+    body: "<strong>Estado:</strong> Relación bilateral sólida. Vaca Muerta, litio, cobre y acuerdos tecnológicos en el centro de la agenda post-midterms 2026. Alianza en defensa y seguridad regional.",
+    actors: ["Administración EE.UU.", "Departamento de Estado", "Cámara de Comercio"],
+    risk: "Volatilidad arancelaria global y tasas de interés de la Fed elevadas.",
   },
   {
     flag: "🇮🇱",
@@ -62,9 +62,9 @@ export const INTL_BLOCS: IntlBloc[] = [
     name: "FMI / BM / OCDE",
     status: "relación clave",
     statusColor: "var(--green)",
-    body: "2da revisión esperada. Desembolso USD 1.000M. Riesgo país cayó a 634pb.",
-    actors: ["Kristalina Georgieva"],
-    risk: "Condicionalidad fiscal y cambiaria.",
+    body: "Metas de superávit primario cumplidas. Foco en acumulación neta de reservas y salida ordenada del esquema cambiario residual. Riesgo país en zona de 800-850 bps.",
+    actors: ["Kristalina Georgieva", "Staff FMI"],
+    risk: "Exigencia de mayor acumulación de reservas netas de cara a vencimientos 2027.",
   },
   {
     flag: "🕌",

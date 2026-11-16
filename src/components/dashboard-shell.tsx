@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { buildDiagnostico4DFederatedUrl } from '@/lib/federation'
+import { APP_VERSION } from '@/lib/version'
 import type { ReactNode } from 'react'
 
 interface NavItem {
@@ -232,7 +233,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             </a>
           </div>
           <div className="flex items-center gap-3">
-            <span className="opacity-50">v5.8.0 Decision OS</span>
+            <span className="opacity-50">{APP_VERSION} Decision OS</span>
             <span className="text-primary/50">▲</span>
           </div>
         </div>

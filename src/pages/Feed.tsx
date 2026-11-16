@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { FEED_ITEMS } from '@/lib/data/feed'
 import {
@@ -8,7 +8,6 @@ import {
 } from '@/lib/context-packs'
 import { loadActiveRegion, saveActiveRegion } from '@/lib/federation'
 import { useLiveIndicators } from '@/hooks/useLiveIndicators'
-import { fetchGlobalNewsGDELT, type GdeltArticle } from '@/lib/api-client'
 
 type EvidenceLevel = 'oficial' | 'mercado' | 'consenso'
 
@@ -40,36 +39,9 @@ export default function FeedPage() {
   const [region, setRegion] = useState<RegionCode>(() => loadActiveRegion())
   const [tagFilter, setTagFilter] = useState<string>('all')
   const [selectedId, setSelectedId] = useState<string>('pack-0')
-  const [gdeltNews, setGdeltNews] = useState<GdeltArticle[]>([])
 
   const pack = REGIONAL_CONTEXT_PACKS[region]
   const live = useLiveIndicators(pack.wbCountryIso)
-
-  useEffect(() => {
-    let cancelled = false
-    const q =
-      region === 'AR'
-        ? 'argentina economy OR inflation'
-        : region === 'BR'
-        ? 'brazil economy OR lula'
-        : region === 'MX'
-        ? 'mexico nearshoring OR trade'
-        : region === 'EU'
-        ? 'european union economy OR ecb'
-        : region === 'US'
-        ? 'united states fed economy OR trade'
-        : 'geopolitics OR global economy OR trade'
-
-    fetchGlobalNewsGDELT(q, 6).then((articles) => {
-      if (!cancelled && articles.length > 0) {
-        setGdeltNews(articles)
-      }
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [region])
 
   const handleSelectRegion = (code: RegionCode) => {
     setRegion(code)
@@ -95,17 +67,6 @@ export default function FeedPage() {
       }
     }
 
-    if (live.riesgoPais) {
-      list.push({
-        id: 'live-riesgo-ar',
-        source: 'ArgentinaDatos EMBI+ (Riesgo País en Vivo)',
-        tag: 'dato-vivo',
-        text: `Riesgo País EMBI+: ${live.riesgoPais.valor} bps al ${live.riesgoPais.fecha} — barómetro de costo de capital.`,
-        evidence: 'mercado',
-        region: 'AR',
-      })
-    }
-
     if (live.globalFx?.rates) {
       list.push({
         id: 'live-fx-global',
@@ -114,6 +75,30 @@ export default function FeedPage() {
         text: `Paridades globales USD: EUR ${live.globalFx.rates.EUR?.toFixed(3) ?? '—'} · BRL ${live.globalFx.rates.BRL?.toFixed(2) ?? '—'} · MXN ${live.globalFx.rates.MXN?.toFixed(2) ?? '—'}.`,
         evidence: 'oficial',
         region: 'ALL',
+      })
+    }
+
+    if (live.riesgoPais) {
+      list.push({
+        id: 'live-risk-ar',
+        source: `ArgentinaDatos · Riesgo País EMBI+ (${live.riesgoPais.fecha})`,
+        tag: 'dato-vivo',
+        text: `Riesgo País actualizado: ${live.riesgoPais.valor} bps. Spread soberano y referencia de financiamiento corporativo.`,
+        evidence: 'mercado',
+        region: 'AR',
+      })
+    }
+
+    if (live.gdeltNews?.length) {
+      live.gdeltNews.forEach((art, idx) => {
+        list.push({
+          id: `live-gdelt-${idx}`,
+          source: `GDELT 2.0 Live OSINT (${art.domain || 'Global'})`,
+          tag: 'geopolitica',
+          text: `${art.title} — Monitoreo de fuentes abiertas en tiempo real.`,
+          evidence: 'mercado',
+          region: pack.code,
+        })
       })
     }
 
@@ -127,18 +112,6 @@ export default function FeedPage() {
         region: pack.code,
       })
     }
-
-    // 1.1 Señales en vivo de Inteligencia de Fuentes Abiertas (GDELT 2.0 OSINT)
-    gdeltNews.forEach((news, idx) => {
-      list.push({
-        id: `gdelt-${idx}`,
-        source: `🌐 GDELT Live OSINT (${news.domain || 'Global'})`,
-        tag: 'osint-vivo',
-        text: news.title,
-        evidence: 'mercado',
-        region,
-      })
-    })
 
     // 2. Riesgos y Oportunidades del ContextPack regional activo
     pack.strategicRisks.forEach((risk, idx) => {
@@ -178,7 +151,7 @@ export default function FeedPage() {
     })
 
     return list
-  }, [live, pack, gdeltNews, region])
+  }, [live, pack])
 
   const filteredItems = useMemo(() => {
     return allItems.filter((item) => {
@@ -203,7 +176,7 @@ export default function FeedPage() {
     })
   }, [selectedItem, pack.summary, region])
 
-  const availableTags = ['all', 'dato-vivo', 'osint-vivo', 'riesgo', 'proyección', 'dato', 'análisis', 'sondeo']
+  const availableTags = ['all', 'dato-vivo', 'riesgo', 'proyección', 'dato', 'análisis', 'sondeo']
 
   return (
     <div className="mx-auto max-w-[1600px] px-6 py-8 space-y-8">

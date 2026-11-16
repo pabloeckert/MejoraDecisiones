@@ -1,5 +1,5 @@
-// Feed de fuentes y análisis
-// Migrado de nash-dashboard/app.js
+// Feed de fuentes y análisis macroestratégico
+// Migrado de nash-dashboard/app.js y calibrado a 2026-2027
 
 export type FeedItem = {
   source: string;
@@ -8,13 +8,13 @@ export type FeedItem = {
 };
 
 export const FEED_ITEMS: FeedItem[] = [
-  { source: "The Economist — 2026", text: "'Argentina is a case study in shock therapy in democracy.'", tag: "análisis" },
-  { source: "FMI WEO Abril 2026", text: "PIB +3,5% (↓). Inflación 30,4% (↑).", tag: "dato" },
-  { source: "Bloomberg Línea", text: "ATN de $20.000M a 6 provincias antes de reforma laboral. 'Fondos por votos'.", tag: "investigación" },
-  { source: "Carlos Pagni", text: "'La interna Karina-Caputo define quién conduce después de Milei.'", tag: "columnista" },
-  { source: "Poliarquía", text: "LLA 40%+ imagen positiva pero núcleo duro más estrecho.", tag: "sondeo" },
-  { source: "IERAL", text: "Proyección inflación 23% dic-2026. Optimista: 18%. Pesimista: 30%.", tag: "proyección" },
-  { source: "Deloitte LATAM", text: "PIB 2025: +4,4%. Finanzas y minería lideraron.", tag: "dato" },
-  { source: "WEF", text: "Argentina: mayor mejora libertad económica global 2025.", tag: "internacional" },
-  { source: "VisionPolítica", text: "Milei presiona a gobernadores para evitar desdoblamientos.", tag: "análisis" },
+  { source: "The Economist Intelligence", text: "'Argentina's fiscal consolidation faces the test of the 2027 electoral cycle and structural reform delivery.'", tag: "análisis" },
+  { source: "FMI WEO Octubre 2026 / 2027", text: "Proyección PIB 2027: +3,2%. Inflación anual proyectada: 28-32%.", tag: "dato" },
+  { source: "Bloomberg Línea", text: "Inversiones del RIGI en energía y minería superan USD 12.000M comprometidos hacia 2027.", tag: "investigación" },
+  { source: "Carlos Pagni", text: "'El balance de poder con los gobernadores provinciales define el piso de gobernabilidad legislativa.'", tag: "columnista" },
+  { source: "Poliarquía", text: "Aprobación de gestión estabilizada en ~42% con alta polarización de cara a 2027.", tag: "sondeo" },
+  { source: "IERAL", text: "Consolidación de superávit primario de 1,4% del PIB y reactivación del crédito al sector privado.", tag: "proyección" },
+  { source: "Deloitte LATAM", text: "Exportaciones de Vaca Muerta y complejo litífero proyectan récord de divisas netas para 2027.", tag: "dato" },
+  { source: "WEF", text: "Argentina escala posiciones en libertad económica y apertura de mercados de capitales.", tag: "internacional" },
+  { source: "CERA / CAC", text: "PyMEs industriales demandan alivio de costos logísticos y modernización impositiva para competir.", tag: "gremial" },
 ];

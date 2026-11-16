@@ -57,7 +57,7 @@
 ---
 
 ### BLOQUE 6 (`v5.8.0`) — Datos Reales en Vivo, Reparación de APIs, CI/CD Real y Actualización Geopolítica 2026–2027
-**Estado:** ⏳ PENDIENTE (Siguiente paso inmediato)
+**Estado:** ✅ COMPLETO (2026-11-16)
 
 **Objetivos y Tareas Exactas:**
 1. **Reparación y Expansión de Conectores en Vivo (`src/lib/api-client.ts`, `src/hooks/useLiveIndicators.ts`):**

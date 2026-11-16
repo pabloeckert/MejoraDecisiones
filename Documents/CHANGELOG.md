@@ -1,25 +1,28 @@
 # Changelog — Tablero Nash / MejoraDecisiones
 
-## v5.8.0 — 2026-11-16 (Bloque 6: Datos Reales en Vivo, Fix APIs, CI/CD y Calibración 2026–2027)
+## v5.8.0 — 2026-11-16 (Bloque 6: Datos Reales en Vivo, Riesgo País, GDELT Live OSINT, CI/CD y Calibración 2026-2027)
 
 ### Added
-- **Conexión Directa en Vivo de APIs Financieras & OSINT (`src/lib/api-client.ts`, `src/hooks/useLiveIndicators.ts`):**
-  - Reparado `fetchInflacion()` consumiendo primariamente `https://api.argentinadatos.com/v1/finanzas/indices/inflacion` (variación mensual real %) con fallback a `apis.datos.gob.ar` y fallback calibrado para 2026-2027.
-  - Implementada nueva función `fetchRiesgoPais()` consumiendo `https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo` (EMBI+ en bps) e integrado en el hook `useLiveIndicators` (`live.riesgoPais`).
-  - Implementada nueva función `fetchGlobalNewsGDELT(query, maxRecords)` consultando la API pública GDELT 2.0 Document API con throttle estricto (>= 5.5s) y caché de 15 minutos.
-  - Exportada utilidad `clearApiClientCache()` para testing y reseteo determinista en memoria.
-- **Canal de Inteligencia Abierta OSINT & Alertas Centinela Calibradas (`src/pages/Feed.tsx`, `src/pages/Indicadores.tsx`):**
-  - Módulo Feed (`/feed`) ahora incorpora noticias geopolíticas y económicas en vivo desde GDELT OSINT (`osint-vivo`) adaptadas automáticamente según la región activa seleccionada (`AR`, `US`, `BR`, `MX`, `EU`, `GLOBAL`).
-  - Módulo Indicadores (`/indicadores`) ahora conecta Riesgo País en vivo al Centinela Stop-Loss y a la grilla de KPIs macro, recalibrando el umbral de alerta a 950 bps y actualizando la serie histórica hasta Nov-2026.
-- **Calibración 2026–2027 de Modelos IA & Analistas (`src/lib/data/analysts.ts`, `src/lib/data/ai-thinking.ts`, `src/components/dashboard-shell.tsx`):**
-  - Incorporada perspectiva de Marina Dal Poggetto (EcoGo) y recalibradas citas de analistas nacionales e internacionales de cara al ciclo 2026–2027.
-  - Modelos de IA actualizados a perspectivas 2026-2027: Gemini 2.5 Flash, Claude 3.7 Sonnet, OpenAI o3, Llama 3.3 y DeepSeek R1.
-  - Versión oficial actualizada a `v5.8.0 Decision OS` en footer y `package.json`.
-- **Automatización CI/CD con GitHub Actions (`.github/workflows/ci.yml`, `.github/workflows/pages.yml`):**
-  - Flujo `ci.yml`: ejecución de linting, suite de tests y build de producción en cada push y PR.
-  - Flujo `pages.yml`: pipeline de calidad y despliegue automático del bundle a GitHub Pages al mergear en `main`.
-- **Suite de Pruebas Unitarias de Integración de APIs (`src/__tests__/api-client.test.ts`):**
-  - 8 nuevos tests deterministas validando parseo de inflación, riesgo país, GDELT, divisas, reservas y World Bank con resiliencia a fallas de red (**76 tests totales pasando**).
+- **Conector en Tiempo Real para Riesgo País EMBI+ (`src/lib/api-client.ts`, `src/pages/Indicadores.tsx`, `src/pages/Feed.tsx`):**
+  - Nueva función `fetchRiesgoPais()` consumiendo el endpoint abierto de ArgentinaDatos (`https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo`) con fallback calibrado 2026-2027.
+  - Indicador dinámico en vivo en el panel de `/indicadores` (reemplaza valor estático previo) y en la evaluación de Alertas Centinela (Meadows).
+- **Conector de Fuentes Abiertas GDELT 2.0 Live OSINT (`src/lib/api-client.ts`, `src/pages/Feed.tsx`):**
+  - Implementada función `fetchGlobalNewsGDELT()` consumiendo la DOC API 2.0 de GDELT (`https://api.gdeltproject.org/api/v2/doc/doc`) con control de rate-limit (mínimo 5,5s entre requests para evitar HTTP 429) y caché en memoria de 15 minutos.
+  - Ingesta en tiempo real de titulares globales de economía y comercio en el feed de noticias categorizados con etiqueta `🌐 GDELT Live OSINT`.
+- **Pipeline CI/CD Profesional para Producción (`.github/workflows/ci.yml`, `.github/workflows/pages.yml`):**
+  - `ci.yml`: Validación automática de `eslint`, `vitest` y compilación de producción en PRs y ramas.
+  - `pages.yml`: Pipeline de despliegue continuo a GitHub Pages en `main` condicionado al éxito del job previo de calidad (`quality`).
+- **Tests Unitarios de Clientes de API (`src/__tests__/api-client.test.ts`):**
+  - 7 nuevos tests unitarios mockeando `fetch` para parseo de respuestas, caché, throttling y fallbacks tolerantes a desconexión (**75 tests totales pasando**).
+
+### Changed
+- **Reparación del Conector de Inflación Mensual INDEC (`src/lib/api-client.ts`):**
+  - Prioridad a `https://api.argentinadatos.com/v1/finanzas/indices/inflacion` (serie mensual limpia de variación %) con fallback secundario a `apis.datos.gob.ar` usando `representation_mode=percent_change` y desestructuración robusta.
+- **Calibración Integral a Contexto 2026-2027:**
+  - `src/lib/context-packs.ts`: actualizados cartuchos regionales (`GLOBAL`, `AR`, `US`, `BR`, `MX`, `EU`) con piso inflacionario 2,1-2,4%, riesgo país 840 bps y superávit primario 1,4% PIB.
+  - `src/lib/data/`: `ai-thinking.ts` (modelos Frontier Reasoning, Claude 3.7, Gemini 2.5, DeepSeek R1, Llama 3.3), `analysts.ts` (actualización de analistas vigentes y citas 2026-2027), `scenarios.ts` (escenarios de transición 2027), `feed.ts`, `organisms.ts` e `international.ts`.
+- **Sincronización Central de Versión (`src/lib/version.ts`, `src/components/dashboard-shell.tsx`, `package.json`):**
+  - Constante compartida `APP_VERSION = 'v5.8.0'` consumida por el footer del shell y metadatos del paquete.
 
 ## v5.7.0 — 2026-11-15 (Bloque 5: Auditor Pre-Mortem, Reversibilidad Tipo 1 vs 2, Exportador Markdown/CSV y PWA Offline Hardening)
 

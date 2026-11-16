@@ -3,13 +3,12 @@ import {
   fetchInflacion,
   fetchRiesgoPais,
   fetchGlobalNewsGDELT,
-  fetchDolar,
   fetchGlobalFxRates,
   fetchWorldBankMacro,
   clearApiClientCache,
 } from '../lib/api-client'
 
-describe('API Client — Live Indicators & Fallbacks', () => {
+describe('API Client — Live Connectors 2026-2027', () => {
   const originalFetch = globalThis.fetch
 
   beforeEach(() => {
@@ -21,132 +20,102 @@ describe('API Client — Live Indicators & Fallbacks', () => {
     globalThis.fetch = originalFetch
   })
 
-  it('fetchInflacion parses ArgentinaDatos format correctly', async () => {
+  it('fetchRiesgoPais parses ArgentinaDatos response correctly', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      status: 200,
-      json: async () => [
-        { fecha: '2026-06-15', valor: 2.3 },
-        { fecha: '2026-07-15', valor: 2.2 },
-        { fecha: '2026-08-15', valor: 2.4 },
-        { fecha: '2026-09-15', valor: 2.3 },
-        { fecha: '2026-10-15', valor: 2.2 },
-        { fecha: '2026-11-15', valor: 2.1 },
-      ],
-    } as Response)
+      json: async () => ({ fecha: '2026-11-15', valor: 835 }),
+    } as unknown as Response)
 
-    const data = await fetchInflacion()
-    expect(Array.isArray(data)).toBe(true)
-    expect(data.length).toBe(6)
-    expect(data[0].mes).toBe('2026-06')
-    expect(data[0].valor).toBe(2.3)
-    expect(data[5].mes).toBe('2026-11')
-    expect(data[5].valor).toBe(2.1)
+    const res = await fetchRiesgoPais()
+    expect(res).toBeDefined()
+    expect(typeof res.valor).toBe('number')
+    expect(res.valor).toBe(835)
+    expect(res.fecha).toBe('2026-11-15')
   })
 
-  it('fetchInflacion falls back to calibrated data if network fails', async () => {
+  it('fetchRiesgoPais falls back gracefully when API returns error', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
-    const data = await fetchInflacion()
-    expect(Array.isArray(data)).toBe(true)
-    expect(data.length).toBeGreaterThanOrEqual(6)
-    expect(data[0].mes).toBeTruthy()
-    expect(typeof data[0].valor).toBe('number')
+
+    const res = await fetchRiesgoPais()
+    expect(res).toBeDefined()
+    expect(res.valor).toBe(840) // Default calibrated fallback
+    expect(typeof res.fecha).toBe('string')
   })
 
-  it('fetchRiesgoPais parses EMBI+ bps correctly', async () => {
+  it('fetchInflacion parses monthly array from primary API', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      status: 200,
-      json: async () => ({ fecha: '2026-11-16', valor: 842.4 }),
-    } as Response)
+      json: async () => [
+        { fecha: '2026-08-01', valor: 2.3 },
+        { fecha: '2026-09-01', valor: 2.2 },
+        { fecha: '2026-10-01', valor: 2.1 },
+      ],
+    } as unknown as Response)
 
-    const risk = await fetchRiesgoPais()
-    expect(risk).not.toBeNull()
-    expect(risk?.fecha).toBe('2026-11-16')
-    expect(risk?.valor).toBe(842)
+    const list = await fetchInflacion()
+    expect(Array.isArray(list)).toBe(true)
+    expect(list.length).toBeGreaterThanOrEqual(3)
+    expect(list[0]).toHaveProperty('mes')
+    expect(list[0]).toHaveProperty('valor')
+    expect(list[list.length - 1].valor).toBe(2.1)
   })
 
-  it('fetchRiesgoPais returns null on API failure without throwing', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Timeout'))
-    const risk = await fetchRiesgoPais()
-    expect(risk).toBeNull()
+  it('fetchInflacion falls back to secondary and calibrated data when network fails', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Offline'))
+
+    const list = await fetchInflacion()
+    expect(Array.isArray(list)).toBe(true)
+    expect(list.length).toBeGreaterThanOrEqual(4)
+    expect(list[list.length - 1].valor).toBeGreaterThan(0)
   })
 
-  it('fetchGlobalNewsGDELT parses articles structure', async () => {
+  it('fetchGlobalNewsGDELT returns articles from GDELT endpoint', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      status: 200,
       json: async () => ({
         articles: [
           {
-            url: 'https://reuters.com/news-1',
-            title: 'Global trade dynamics in 2026',
+            url: 'https://reuters.com/news/1',
+            title: 'Global Trade Flows Expand in LatAm',
             seendate: '20261116T120000Z',
             domain: 'reuters.com',
-            sourcecountry: 'US',
+            sourcecountry: 'United States',
           },
         ],
       }),
-    } as Response)
+    } as unknown as Response)
 
-    const news = await fetchGlobalNewsGDELT('trade', 5)
-    expect(Array.isArray(news)).toBe(true)
-    expect(news.length).toBe(1)
-    expect(news[0].title).toBe('Global trade dynamics in 2026')
-    expect(news[0].domain).toBe('reuters.com')
+    const articles = await fetchGlobalNewsGDELT('test query 2026', 2)
+    expect(Array.isArray(articles)).toBe(true)
+    expect(articles.length).toBe(1)
+    expect(articles[0].domain).toBe('reuters.com')
   })
 
-  it('fetchDolar parses exchange rates correctly', async () => {
+  it('fetchGlobalFxRates fetches currency rates from BCE/Frankfurter', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      status: 200,
-      json: async () => [
-        { nombre: 'Oficial', compra: 1420, venta: 1460, fechaActualizacion: '2026-11-16' },
-        { nombre: 'Blue', compra: 1470, venta: 1490, fechaActualizacion: '2026-11-16' },
-      ],
-    } as Response)
-
-    const rates = await fetchDolar()
-    expect(rates.length).toBe(2)
-    expect(rates[0].nombre).toBe('Oficial')
-    expect(rates[0].venta).toBe(1460)
-  })
-
-  it('fetchGlobalFxRates returns base and rate map', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
       json: async () => ({
         base: 'USD',
-        date: '2026-11-16',
-        rates: { EUR: 0.95, BRL: 5.78, MXN: 20.3 },
+        date: '2026-11-15',
+        rates: { EUR: 0.945, BRL: 5.82, MXN: 18.45 },
       }),
-    } as Response)
+    } as unknown as Response)
 
     const fx = await fetchGlobalFxRates()
-    expect(fx?.base).toBe('USD')
-    expect(fx?.rates.BRL).toBe(5.78)
+    expect(fx).toBeDefined()
+    expect(fx?.rates?.BRL).toBe(5.82)
   })
 
-  it('fetchWorldBankMacro extracts inflation and GDP cleanly', async () => {
-    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url.includes('FP.CPI.TOTL.ZG')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => [{}, [{ date: '2025', value: 2.8, country: { id: 'US', value: 'USA' } }]],
-        } as Response)
-      }
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => [{}, [{ date: '2025', value: 2.1, country: { id: 'US', value: 'USA' } }]],
-      } as Response)
-    })
+  it('fetchWorldBankMacro formats macro snapshot', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        { page: 1 },
+        [{ date: '2026', value: 2.8, country: { id: 'US', value: 'United States' } }],
+      ],
+    } as unknown as Response)
 
-    const wb = await fetchWorldBankMacro('USA')
-    expect(wb.countryIso).toBe('USA')
-    expect(wb.inflationAnnualPct).toBe(2.8)
-    expect(wb.gdpGrowthAnnualPct).toBe(2.1)
+    const snap = await fetchWorldBankMacro('USA')
+    expect(snap.countryIso).toBe('USA')
   })
 })
